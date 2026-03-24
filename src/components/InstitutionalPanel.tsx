@@ -50,7 +50,9 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
 
   const [templateName, setTemplateName] = useState('');
   const [inspectionTitle, setInspectionTitle] = useState('');
+  const [inspectionSeverity, setInspectionSeverity] = useState('Media');
   const [actionTitle, setActionTitle] = useState('');
+  const [actionPriority, setActionPriority] = useState('Media');
   const [courseName, setCourseName] = useState('');
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
       setCourses(coursesData);
       setRecords(recordsData);
     } catch (error) {
-      console.error('Error loading institutional data:', error);
+      console.error('Error loading operational data:', error);
     } finally {
       setLoading(false);
     }
@@ -107,9 +109,10 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
       organization_key: 'default',
       titulo: inspectionTitle.trim(),
       estado: 'Pendiente',
-      criticidad: 'Media',
+      criticidad: inspectionSeverity,
     });
     setInspectionTitle('');
+    setInspectionSeverity('Media');
     await loadInstitutionalData();
   }
 
@@ -118,10 +121,11 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
     await api.createCorrectiveAction({
       organization_key: 'default',
       titulo: actionTitle.trim(),
-      prioridad: 'Media',
+      prioridad: actionPriority,
       estado: 'Abierta',
     });
     setActionTitle('');
+    setActionPriority('Media');
     await loadInstitutionalData();
   }
 
@@ -157,7 +161,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
   if (loading) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
-        <p className="text-sm text-slate-600">Cargando capa institucional...</p>
+        <p className="text-sm text-slate-600">Cargando modulos operativos...</p>
       </div>
     );
   }
@@ -166,12 +170,11 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
     <section className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-6 shadow-sm shadow-slate-200/60">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-sky-700">Capa institucional</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-            Formularios, inspecciones, mitigacion y training management
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+            Auditorias, inspecciones y gestion operativa
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            Base operativa de la Fase 1 para uso institucional, trazabilidad regulatoria y gestion interna.
+            Seguimiento centralizado de plantillas, revisiones, acciones correctivas y capacitaciones.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -188,7 +191,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
             <p className="mt-1 text-2xl font-semibold text-slate-900">{actions.length}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Training</p>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Capacitaciones</p>
             <p className="mt-1 text-2xl font-semibold text-slate-900">{records.length}</p>
           </div>
         </div>
@@ -198,7 +201,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
         <ModuleCard
           icon={<FileText className="h-5 w-5 text-sky-700" />}
           title="Formularios configurables"
-          description="Definicion inicial de plantillas por modulo y organizacion."
+          description="Plantillas base para ordenar la carga operativa por modulo y organizacion."
           accent="bg-sky-50"
         >
           <div className="mb-4 flex gap-2">
@@ -227,7 +230,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
         <ModuleCard
           icon={<ClipboardCheck className="h-5 w-5 text-amber-700" />}
           title="Auditorias e inspecciones"
-          description="Carga y seguimiento inicial de inspecciones y revisiones operativas."
+          description="Registro y seguimiento de revisiones operativas, auditorias e inspecciones."
           accent="bg-amber-50"
         >
           <div className="mb-4 flex gap-2">
@@ -237,6 +240,16 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
               placeholder="Nueva inspeccion"
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
             />
+            <select
+              value={inspectionSeverity}
+              onChange={(e) => setInspectionSeverity(e.target.value)}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="Baja">Baja</option>
+              <option value="Media">Media</option>
+              <option value="Alta">Alta</option>
+              <option value="Critica">Critica</option>
+            </select>
             <button onClick={handleCreateInspection} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white">
               Crear
             </button>
@@ -246,7 +259,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
               <div key={inspection.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="font-medium text-slate-900">{inspection.titulo}</p>
                 <p className="mt-1 text-sm text-slate-500">
-                  {inspection.estado} · {inspection.criticidad || 'Sin criticidad'}
+                  {inspection.estado} · Criticidad {inspection.criticidad || 'sin definir'}
                 </p>
               </div>
             ))}
@@ -256,7 +269,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
         <ModuleCard
           icon={<ShieldCheck className="h-5 w-5 text-rose-700" />}
           title="Mitigacion y acciones correctivas"
-          description="Registro y cierre controlado de medidas derivadas de hallazgos o incidentes."
+          description="Registro y cierre controlado de medidas derivadas de hallazgos, auditorias o incidentes."
           accent="bg-rose-50"
         >
           <div className="mb-4 flex gap-2">
@@ -266,6 +279,16 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
               placeholder="Nueva accion correctiva"
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
             />
+            <select
+              value={actionPriority}
+              onChange={(e) => setActionPriority(e.target.value)}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="Baja">Baja</option>
+              <option value="Media">Media</option>
+              <option value="Alta">Alta</option>
+              <option value="Critica">Critica</option>
+            </select>
             <button onClick={handleCreateAction} className="rounded-xl bg-rose-700 px-4 py-2 text-sm font-medium text-white">
               Crear
             </button>
@@ -277,7 +300,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
                   <div>
                     <p className="font-medium text-slate-900">{action.titulo}</p>
                     <p className="mt-1 text-sm text-slate-500">
-                      {action.prioridad} · {action.estado}
+                      Prioridad {action.prioridad} · {action.estado}
                     </p>
                   </div>
                   {action.estado !== 'Cerrada' && (
@@ -293,8 +316,8 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
 
         <ModuleCard
           icon={<GraduationCap className="h-5 w-5 text-emerald-700" />}
-          title="Training management"
-          description="Cursos institucionales, asignacion y cierre de capacitaciones."
+          title="Capacitaciones"
+          description="Cursos internos, asignacion y cierre de capacitaciones operativas."
           accent="bg-emerald-50"
         >
           <div className="mb-4 flex gap-2">
