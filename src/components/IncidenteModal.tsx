@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { X } from 'lucide-react';
-import type { Database } from '../lib/database.types';
-
-type Incidente = Database['public']['Tables']['incidentes']['Row'];
-type Aeropuerto = Database['public']['Tables']['aeropuertos']['Row'];
-type TipoIncidente = Database['public']['Tables']['tipos_incidente']['Row'];
-type Aeronave = Database['public']['Tables']['aeronaves']['Row'];
+import { api } from '../lib/api';
+import type { Aeronave, Aeropuerto, Incidente, TipoIncidente } from '../lib/types';
+import { getPrediccionRiesgo } from '../services/predictiveService';
 
 interface Props {
   incidente: Incidente | null;
@@ -39,15 +35,10 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
 
   async function loadFormData() {
     try {
-      const [aeropuertosRes, tiposRes, aeronavesRes] = await Promise.all([
-        supabase.from('aeropuertos').select('*').order('nombre'),
-        supabase.from('tipos_incidente').select('*').order('nombre'),
-        supabase.from('aeronaves').select('*').order('matricula')
-      ]);
-
-      if (aeropuertosRes.data) setAeropuertos(aeropuertosRes.data);
-      if (tiposRes.data) setTiposIncidente(tiposRes.data);
-      if (aeronavesRes.data) setAeronaves(aeronavesRes.data);
+      const data = await api.getFormCatalogs();
+      setAeropuertos(data.aeropuertos);
+      setTiposIncidente(data.tipos_incidente);
+      setAeronaves(data.aeronaves);
     } catch (error) {
       console.error('Error loading form data:', error);
     }
@@ -58,13 +49,20 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
     setLoading(true);
 
     try {
+      const prediccion = await getPrediccionRiesgo({
+        ...formData,
+        aeropuerto_id: formData.aeropuerto_id ? parseInt(formData.aeropuerto_id as string, 10) : null,
+        tipo_incidente_id: formData.tipo_incidente_id ? parseInt(formData.tipo_incidente_id as string, 10) : null,
+        aeronave_id: formData.aeronave_id ? parseInt(formData.aeronave_id as string, 10) : null,
+      });
+
       const dataToSave = {
-        aeropuerto_id: formData.aeropuerto_id ? parseInt(formData.aeropuerto_id as string) : null,
-        tipo_incidente_id: formData.tipo_incidente_id ? parseInt(formData.tipo_incidente_id as string) : null,
-        aeronave_id: formData.aeronave_id ? parseInt(formData.aeronave_id as string) : null,
+        aeropuerto_id: formData.aeropuerto_id ? parseInt(formData.aeropuerto_id as string, 10) : null,
+        tipo_incidente_id: formData.tipo_incidente_id ? parseInt(formData.tipo_incidente_id as string, 10) : null,
+        aeronave_id: formData.aeronave_id ? parseInt(formData.aeronave_id as string, 10) : null,
         fecha_hora: formData.fecha_hora,
         descripcion: formData.descripcion,
-        nivel_riesgo: formData.nivel_riesgo as 'Bajo' | 'Medio' | 'Alto' | 'Crítico',
+        nivel_riesgo: prediccion.nivel,
         fase_vuelo: formData.fase_vuelo,
         latitud: formData.latitud ? parseFloat(formData.latitud as string) : null,
         longitud: formData.longitud ? parseFloat(formData.longitud as string) : null,
@@ -72,16 +70,9 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
       };
 
       if (incidente) {
-        const { error } = await supabase
-          .from('incidentes')
-          .update(dataToSave)
-          .eq('id', incidente.id);
-        if (error) throw error;
+        await api.updateIncidente(incidente.id, dataToSave);
       } else {
-        const { error } = await supabase
-          .from('incidentes')
-          .insert(dataToSave);
-        if (error) throw error;
+        await api.createIncidente(dataToSave);
       }
 
       onClose();
@@ -192,6 +183,9 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
                 <option value="Alto">Alto</option>
                 <option value="Crítico">Crítico</option>
               </select>
+              <p className="mt-2 text-xs text-gray-500">
+                El nivel final se recalcula automáticamente con el motor predictivo al guardar.
+              </p>
             </div>
 
             <div>

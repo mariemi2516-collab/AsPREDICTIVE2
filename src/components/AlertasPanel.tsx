@@ -1,12 +1,7 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/api';
 import { AlertCircle, CheckCircle } from 'lucide-react';
-import type { Database } from '../lib/database.types';
-
-type Alerta = Database['public']['Tables']['alertas']['Row'] & {
-  aeropuertos?: { nombre: string } | null;
-};
+import type { Alerta } from '../lib/types';
 
 interface Props {
   alertas: Alerta[];
@@ -14,22 +9,12 @@ interface Props {
 }
 
 export default function AlertasPanel({ alertas, onUpdate }: Props) {
-  const { user } = useAuth();
   const [processingId, setProcessingId] = useState<number | null>(null);
 
   async function handleResolve(alertaId: number) {
     setProcessingId(alertaId);
     try {
-      const { error } = await supabase
-        .from('alertas')
-        .update({
-          estado: 'Resuelta',
-          atendido_por: user?.id,
-          fecha_resolucion: new Date().toISOString()
-        })
-        .eq('id', alertaId);
-
-      if (error) throw error;
+      await api.resolveAlerta(alertaId);
       await onUpdate();
     } catch (error) {
       console.error('Error resolving alert:', error);

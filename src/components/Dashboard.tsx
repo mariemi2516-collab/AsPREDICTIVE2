@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   AlertTriangle,
@@ -11,55 +10,42 @@ import {
 } from 'lucide-react';
 import IncidentesTable from './IncidentesTable';
 import AlertasPanel from './AlertasPanel';
-import type { Database } from '../lib/database.types';
+import { api } from '../lib/api';
+import type { Alerta, Incidente } from '../lib/types';
+import { getPrediccionRiesgo } from '../services/predictiveService';
 
-type Incidente = Database['public']['Tables']['incidentes']['Row'] & {
-  aeropuertos?: { nombre: string; codigo_icao: string } | null;
-  tipos_incidente?: { nombre: string } | null;
-};
+async function generarAlertasPredictivas() {
+  const incidentes = await api.listIncidentes(20);
+  if (!incidentes?.length) return;
 
-type Alerta = Database['public']['Tables']['alertas']['Row'] & {
-  aeropuertos?: { nombre: string } | null;
-};
+  const alertasPendientes = await api.listAlertasPendientes(50);
 
-// ✅ Cálculo real del riesgo promedio
-async function calcularRiesgoPromedio() {
-  const { data } = await supabase
-    .from('incidentes')
-    .select('nivel_riesgo');
+  await Promise.all(
+    incidentes.map(async (incidente) => {
+      const pred = await getPrediccionRiesgo(incidente);
 
-  if (!data || data.length === 0) return 0;
+      if (pred.score <= 70) return;
 
-  const map: any = { Bajo: 1, Medio: 2, Alto: 3, Crítico: 4 };
+      const resumenFactores = pred.factores?.slice(0, 2).join(', ');
+      const mensaje = resumenFactores
+        ? `Alto riesgo detectado en incidente ${incidente.id}. Factores: ${resumenFactores}.`
+        : `Alto riesgo detectado en incidente ${incidente.id}`;
+      const alertaExistente = alertasPendientes.find((alerta) =>
+        alerta.tipo_alerta === 'Riesgo Predictivo' &&
+        (alerta.mensaje || '').includes(`incidente ${incidente.id}`)
+      );
+      if (alertaExistente) return;
 
-  const promedio =
-    data.reduce((acc: number, curr: any) => acc + (map[curr.nivel_riesgo] || 0), 0) /
-    data.length;
-
-  return Math.round((promedio / 4) * 100);
-}
-
-
-async function predecirRiesgoFuturo() {
-  const { data } = await supabase
-    .from('incidentes')
-    .select('*')
-    .order('fecha_hora', { ascending: false })
-    .limit(20);
-
-  if (!data || data.length === 0) return 0;
-
-  // Simulación de tendencia (colocar IA real)
-  const map: any = { Bajo: 1, Medio: 2, Alto: 3, Crítico: 4 };
-
-  const tendencia =
-    data.reduce((acc: number, curr: any) => acc + (map[curr.nivel_riesgo] || 0), 0) /
-    data.length;
-
-  // Simula aumento de riesgo futuro
-  const prediccion = tendencia * (1 + Math.random() * 0.3);
-
-  return Math.min(100, Math.round((prediccion / 4) * 100));
+      await api.createAlerta({
+        tipo_alerta: 'Riesgo Predictivo',
+        mensaje,
+        nivel_criticidad: pred.score > 85 ? 'Crítico' : 'Alta',
+        estado: 'Pendiente',
+        score_predictivo: pred.score,
+        aeropuerto_id: incidente.aeropuerto_id
+      });
+    })
+  );
 }
 export default function Dashboard() {
   const { usuario, signOut } = useAuth();
@@ -81,43 +67,14 @@ export default function Dashboard() {
 
 async function loadDashboardData() {
   try {
-    const [incidentesRes, alertasRes, aeropuertosRes, riesgoPromedio, riesgoFuturo] = await Promise.all([
-      supabase
-        .from('incidentes')
-        .select('*, aeropuertos(nombre, codigo_icao), tipos_incidente(nombre)')
-        .order('fecha_hora', { ascending: false })
-        .limit(5),
-
-      supabase
-        .from('alertas')
-        .select('*, aeropuertos(nombre)')
-        .eq('estado', 'Pendiente')
-        .order('fecha_generacion', { ascending: false })
-        .limit(10),
-
-      supabase.from('aeropuertos').select('id', { count: 'exact', head: true }),
-
-      calcularRiesgoPromedio(),
-      predecirRiesgoFuturo()
-    ]);
-
-    if (incidentesRes.data) setRecentIncidentes(incidentesRes.data);
-    if (alertasRes.data) setAlertas(alertasRes.data);
-
-    const { count: totalIncidentes } = await supabase
-      .from('incidentes')
-      .select('*', { count: 'exact', head: true });
-
-    setStats({
-      totalIncidentes: totalIncidentes || 0,
-      alertasActivas: alertasRes.data?.length || 0,
-      aeropuertos: aeropuertosRes.count || 0,
-      riesgoPromedio,
-      riesgoFuturo
-    });
+    await generarAlertasPredictivas();
+    const summary = await api.getDashboardSummary();
+    setRecentIncidentes(summary.recentIncidentes);
+    setAlertas(summary.alertas);
+    setStats(summary.stats);
 
   } catch (error) {
-    console.error('Error loading dashboard:', error);
+      console.error('Error loading dashboard:', error);
   } finally {
     setLoading(false);
   }

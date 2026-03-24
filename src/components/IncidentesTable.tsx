@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import IncidenteModal from './IncidenteModal';
-import type { Database } from '../lib/database.types';
-
-type Incidente = Database['public']['Tables']['incidentes']['Row'] & {
-  aeropuertos?: { nombre: string; codigo_icao: string } | null;
-  tipos_incidente?: { nombre: string } | null;
-  aeronaves?: { matricula: string } | null;
-};
+import { api } from '../lib/api';
+import type { Incidente } from '../lib/types';
 
 interface Props {
   onUpdate: () => void;
@@ -18,6 +12,7 @@ export default function IncidentesTable({ onUpdate }: Props) {
   const [incidentes, setIncidentes] = useState<Incidente[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtroRiesgo, setFiltroRiesgo] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedIncidente, setSelectedIncidente] = useState<Incidente | null>(null);
 
@@ -27,18 +22,7 @@ export default function IncidentesTable({ onUpdate }: Props) {
 
   async function loadIncidentes() {
     try {
-      const { data, error } = await supabase
-        .from('incidentes')
-        .select(`
-          *,
-          aeropuertos(nombre, codigo_icao),
-          tipos_incidente(nombre),
-          aeronaves(matricula)
-        `)
-        .order('fecha_hora', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
+      const data = await api.listIncidentes(50);
       setIncidentes(data || []);
     } catch (error) {
       console.error('Error loading incidents:', error);
@@ -76,11 +60,15 @@ export default function IncidentesTable({ onUpdate }: Props) {
 
   const filteredIncidentes = incidentes.filter((inc) => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       inc.aeropuertos?.nombre?.toLowerCase().includes(searchLower) ||
       inc.tipos_incidente?.nombre?.toLowerCase().includes(searchLower) ||
       inc.aeronaves?.matricula?.toLowerCase().includes(searchLower) ||
-      inc.descripcion?.toLowerCase().includes(searchLower)
+      inc.descripcion?.toLowerCase().includes(searchLower);
+    const matchesRiesgo = filtroRiesgo ? inc.nivel_riesgo === filtroRiesgo : true;
+
+    return (
+      Boolean(matchesSearch) && matchesRiesgo
     );
   });
 
@@ -111,6 +99,17 @@ export default function IncidentesTable({ onUpdate }: Props) {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              <select
+                value={filtroRiesgo}
+                onChange={(e) => setFiltroRiesgo(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Todos los riesgos</option>
+                <option value="Bajo">Bajo</option>
+                <option value="Medio">Medio</option>
+                <option value="Alto">Alto</option>
+                <option value="Crítico">Crítico</option>
+              </select>
               <button
                 onClick={handleCreateNew}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-lg hover:from-sky-600 hover:to-blue-700 transition shadow-lg shadow-blue-500/30"
