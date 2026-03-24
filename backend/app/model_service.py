@@ -318,6 +318,23 @@ def load_ntsb_training_rows(path: Path = NTSB_TRAINING_PATH) -> list[dict[str, A
     return rows
 
 
+def combine_training_rows(
+    ntsb_rows: list[dict[str, Any]] | None = None,
+    postgres_rows: list[dict[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], str]:
+    ntsb_rows = ntsb_rows or []
+    postgres_rows = postgres_rows or []
+
+    if ntsb_rows and postgres_rows:
+        return [*ntsb_rows, *postgres_rows], "ntsb-real-postgresql"
+    if ntsb_rows:
+        return ntsb_rows, "ntsb-real"
+    if postgres_rows:
+        return postgres_rows, "postgresql"
+
+    return [], "bootstrap"
+
+
 def _combine_fecha_hora(fecha: Any, hora: Any) -> str | None:
     if pd.isna(fecha):
         return None

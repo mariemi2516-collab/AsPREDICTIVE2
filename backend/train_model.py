@@ -6,36 +6,34 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.model_service import MODEL_PATH, bootstrap_bundle, load_ntsb_training_rows, save_bundle, train_bundle
+from app.model_service import MODEL_PATH, bootstrap_bundle, combine_training_rows, load_ntsb_training_rows, save_bundle, train_bundle
 from app.models import Incidente
 
 
 def main() -> None:
     load_dotenv()
     ntsb_rows = load_ntsb_training_rows()
-    bundle = train_bundle(ntsb_rows, source_name="ntsb-real") if len(ntsb_rows) >= 12 else None
+    with SessionLocal() as db:
+        postgres_rows = [
+            {
+                "aeropuerto_id": incidente.aeropuerto_id,
+                "tipo_incidente_id": incidente.tipo_incidente_id,
+                "aeronave_id": incidente.aeronave_id,
+                "fase_vuelo": incidente.fase_vuelo,
+                "descripcion": incidente.descripcion,
+                "latitud": incidente.latitud,
+                "longitud": incidente.longitud,
+                "fecha_hora": incidente.fecha_hora.isoformat(),
+                "nivel_riesgo": incidente.nivel_riesgo,
+            }
+            for incidente in db.scalars(select(Incidente).where(Incidente.nivel_riesgo.is_not(None)))
+        ]
 
-    rows = []
-    if bundle is None:
-        with SessionLocal() as db:
-            rows = [
-                {
-                    "aeropuerto_id": incidente.aeropuerto_id,
-                    "tipo_incidente_id": incidente.tipo_incidente_id,
-                    "aeronave_id": incidente.aeronave_id,
-                    "fase_vuelo": incidente.fase_vuelo,
-                    "descripcion": incidente.descripcion,
-                    "latitud": incidente.latitud,
-                    "longitud": incidente.longitud,
-                    "fecha_hora": incidente.fecha_hora.isoformat(),
-                    "nivel_riesgo": incidente.nivel_riesgo,
-                }
-                for incidente in db.scalars(select(Incidente).where(Incidente.nivel_riesgo.is_not(None)))
-            ]
+    training_rows, source_name = combine_training_rows(ntsb_rows, postgres_rows)
 
-    if bundle is None and len(rows) >= 12:
-        bundle = train_bundle(rows, source_name="postgresql")
-    if bundle is None:
+    if len(training_rows) >= 12:
+        bundle = train_bundle(training_rows, source_name=source_name)
+    else:
         bundle = bootstrap_bundle()
 
     path = save_bundle(bundle, MODEL_PATH)

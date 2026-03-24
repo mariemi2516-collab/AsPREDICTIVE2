@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
 import type { Aeronave, Aeropuerto, Incidente, TipoIncidente } from '../lib/types';
 import { getPrediccionRiesgo } from '../services/predictiveService';
@@ -18,6 +18,8 @@ const FASES_VUELO = [
   'Rodaje de llegada',
   'Estacionamiento',
 ];
+
+const NIVELES_RIESGO = ['Bajo', 'Medio', 'Alto', 'Critico'];
 
 interface Props {
   incidente: Incidente | null;
@@ -40,7 +42,7 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
     nivel_riesgo: incidente?.nivel_riesgo || 'Bajo',
     fase_vuelo: incidente?.fase_vuelo || '',
     latitud: incidente?.latitud || '',
-    longitud: incidente?.longitud || ''
+    longitud: incidente?.longitud || '',
   });
 
   useEffect(() => {
@@ -63,24 +65,26 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
     setLoading(true);
 
     try {
-      const prediccion = await getPrediccionRiesgo({
+      const payloadBase = {
         ...formData,
         aeropuerto_id: formData.aeropuerto_id ? parseInt(formData.aeropuerto_id as string, 10) : null,
         tipo_incidente_id: formData.tipo_incidente_id ? parseInt(formData.tipo_incidente_id as string, 10) : null,
         aeronave_id: formData.aeronave_id ? parseInt(formData.aeronave_id as string, 10) : null,
-      });
+      };
+
+      const prediccion = await getPrediccionRiesgo(payloadBase);
 
       const dataToSave = {
-        aeropuerto_id: formData.aeropuerto_id ? parseInt(formData.aeropuerto_id as string, 10) : null,
-        tipo_incidente_id: formData.tipo_incidente_id ? parseInt(formData.tipo_incidente_id as string, 10) : null,
-        aeronave_id: formData.aeronave_id ? parseInt(formData.aeronave_id as string, 10) : null,
+        aeropuerto_id: payloadBase.aeropuerto_id,
+        tipo_incidente_id: payloadBase.tipo_incidente_id,
+        aeronave_id: payloadBase.aeronave_id,
         fecha_hora: formData.fecha_hora,
         descripcion: formData.descripcion,
         nivel_riesgo: prediccion.nivel,
         fase_vuelo: formData.fase_vuelo,
         latitud: formData.latitud ? parseFloat(formData.latitud as string) : null,
         longitud: formData.longitud ? parseFloat(formData.longitud as string) : null,
-        reportado_por: user?.id || null
+        reportado_por: user?.id || null,
       };
 
       if (incidente) {
@@ -99,30 +103,25 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-2xl">
+        <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white p-6">
           <h2 className="text-xl font-bold text-gray-900">
-            {incidente ? 'Editar Incidente' : 'Nuevo Incidente'}
+            {incidente ? 'Editar incidente' : 'Nuevo incidente'}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
-          >
-            <X className="w-6 h-6" />
+          <button onClick={onClose} className="text-gray-400 transition hover:text-gray-600">
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Aeropuerto
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Aeropuerto</label>
               <select
                 value={formData.aeropuerto_id}
                 onChange={(e) => setFormData({ ...formData, aeropuerto_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Seleccionar aeropuerto</option>
                 {aeropuertos.map((aeropuerto) => (
@@ -134,82 +133,73 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Incidente
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Tipo de incidente</label>
               <select
                 value={formData.tipo_incidente_id}
                 onChange={(e) => setFormData({ ...formData, tipo_incidente_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Seleccionar tipo</option>
                 {tiposIncidente.map((tipo) => (
                   <option key={tipo.id} value={tipo.id}>
-                    {tipo.nombre}
+                    {tipo.categoria ? `${tipo.nombre} (${tipo.categoria})` : tipo.nombre}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Aeronave
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Aeronave</label>
               <select
                 value={formData.aeronave_id}
                 onChange={(e) => setFormData({ ...formData, aeronave_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Seleccionar aeronave</option>
                 {aeronaves.map((aeronave) => (
                   <option key={aeronave.id} value={aeronave.id}>
-                    {aeronave.matricula} - {aeronave.modelo}
+                    {[aeronave.matricula, aeronave.modelo, aeronave.tipo_aeronave].filter(Boolean).join(' - ')}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha y Hora
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Fecha y hora</label>
               <input
                 type="datetime-local"
                 value={formData.fecha_hora}
                 onChange={(e) => setFormData({ ...formData, fecha_hora: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nivel de Riesgo
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Nivel de riesgo</label>
               <select
                 value={formData.nivel_riesgo}
                 onChange={(e) => setFormData({ ...formData, nivel_riesgo: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
-                <option value="Bajo">Bajo</option>
-                <option value="Medio">Medio</option>
-                <option value="Alto">Alto</option>
-                <option value="Crítico">Crítico</option>
+                {NIVELES_RIESGO.map((nivel) => (
+                  <option key={nivel} value={nivel}>
+                    {nivel}
+                  </option>
+                ))}
               </select>
               <p className="mt-2 text-xs text-gray-500">
-                El nivel final se recalcula automáticamente con el motor predictivo al guardar.
+                El nivel final se recalcula automaticamente con el motor predictivo al guardar.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fase de Vuelo
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Fase de vuelo</label>
               <select
                 value={formData.fase_vuelo}
                 onChange={(e) => setFormData({ ...formData, fase_vuelo: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Seleccionar fase</option>
                 {FASES_VUELO.map((fase) => (
@@ -221,59 +211,53 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Latitud
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Latitud</label>
               <input
                 type="number"
                 step="0.000001"
                 value={formData.latitud}
                 onChange={(e) => setFormData({ ...formData, latitud: e.target.value })}
                 placeholder="-34.123456"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Longitud
-              </label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Longitud</label>
               <input
                 type="number"
                 step="0.000001"
                 value={formData.longitud}
                 onChange={(e) => setFormData({ ...formData, longitud: e.target.value })}
                 placeholder="-58.123456"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descripción
-            </label>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Descripcion</label>
             <textarea
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Describa el incidente en detalle..."
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+              placeholder="Describe el incidente en detalle..."
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              className="rounded-lg border border-gray-300 px-6 py-2 text-gray-700 transition hover:bg-gray-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-lg hover:from-sky-600 hover:to-blue-700 transition shadow-lg shadow-blue-500/30 disabled:opacity-50"
+              className="rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-2 text-white shadow-lg shadow-blue-500/30 transition hover:from-sky-600 hover:to-blue-700 disabled:opacity-50"
             >
               {loading ? 'Guardando...' : 'Guardar'}
             </button>

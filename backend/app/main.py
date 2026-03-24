@@ -32,7 +32,7 @@ from .api_schemas import (
 )
 from .config import settings
 from .db import Base, engine, get_db
-from .model_service import RiskPredictor, bootstrap_bundle, load_ntsb_training_rows, save_bundle, train_bundle
+from .model_service import RiskPredictor, bootstrap_bundle, combine_training_rows, load_ntsb_training_rows, save_bundle, train_bundle
 from .models import Aeronave, Aeropuerto, Alerta, AuditLog, Incidente, PasswordResetToken, TipoIncidente, Usuario
 from .observability import cleanup_expired_password_resets, log_request_event, logger, write_audit_log
 from .schemas import HealthResponse, IncidentePayload as PredictPayload, PredictionResponse
@@ -212,13 +212,7 @@ def calculate_riesgo_futuro(incidentes: list[Incidente]) -> int:
 
 def train_predictive_model_from_db(db: Session) -> dict[str, Any]:
     ntsb_rows = load_ntsb_training_rows()
-    if len(ntsb_rows) >= 12:
-        bundle = train_bundle(ntsb_rows, source_name="ntsb-real")
-        save_bundle(bundle)
-        predictor.reload()
-        return bundle
-
-    rows = [
+    postgres_rows = [
         {
             "aeropuerto_id": incidente.aeropuerto_id,
             "tipo_incidente_id": incidente.tipo_incidente_id,
@@ -233,10 +227,12 @@ def train_predictive_model_from_db(db: Session) -> dict[str, Any]:
         for incidente in db.scalars(select(Incidente).where(Incidente.nivel_riesgo.is_not(None)))
     ]
 
-    if len(rows) < 12:
+    training_rows, source_name = combine_training_rows(ntsb_rows, postgres_rows)
+
+    if len(training_rows) < 12:
         bundle = bootstrap_bundle()
     else:
-        bundle = train_bundle(rows, source_name="postgresql")
+        bundle = train_bundle(training_rows, source_name=source_name)
 
     save_bundle(bundle)
     predictor.reload()
