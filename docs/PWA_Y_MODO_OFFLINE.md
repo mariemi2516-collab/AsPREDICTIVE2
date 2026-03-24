@@ -5,9 +5,10 @@
 - frontend instalable como PWA con `manifest.webmanifest`
 - `service worker` para shell de aplicacion
 - banner de estado de conectividad
-- cola local persistente en `localStorage`
+- cola local persistente en `IndexedDB`
 - sincronizacion automatica al recuperar conexion
 - sincronizacion manual desde interfaz
+- bandeja local de conflictos con reintento y descarte
 
 ## Operaciones que hoy pueden encolarse offline
 

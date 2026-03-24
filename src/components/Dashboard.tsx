@@ -145,7 +145,7 @@ export default function Dashboard() {
       <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#dbeafe,_#eff6ff_42%,_#f8fafc_72%)]">
         <div className="rounded-2xl border border-slate-200 bg-white/90 px-8 py-6 text-center shadow-xl shadow-slate-200/50">
           <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-sky-700" />
-          <p className="text-sm font-medium text-slate-700">Cargando tablero institucional...</p>
+          <p className="text-sm font-medium text-slate-700">Cargando tablero operativo...</p>
         </div>
       </div>
     );
@@ -161,7 +161,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-                Plataforma institucional
+                Centro de control operativo
               </p>
               <h1 className="text-xl font-semibold tracking-tight text-slate-950">
                 AsPREDICTIVE Seguridad Operacional
@@ -197,8 +197,8 @@ export default function Dashboard() {
                 Centro de control para incidentes, alertas y trazabilidad institucional.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-sky-50/90">
-                El tablero integra riesgo operacional, analitica predictiva y una capa institucional para auditorias,
-                mitigaciones, capacitacion y seguimiento regulatorio.
+                El tablero integra riesgo operacional, analitica predictiva, auditorias, acciones correctivas,
+                alertas y seguimiento regulatorio en una sola vista.
               </p>
             </div>
 
@@ -251,7 +251,7 @@ export default function Dashboard() {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight text-slate-950">Incidentes recientes</h3>
-                <p className="text-sm text-slate-500">Eventos priorizados con lectura operacional y explicabilidad IA.</p>
+                <p className="text-sm text-slate-500">Eventos priorizados con lectura operacional y explicabilidad del modelo.</p>
               </div>
             </div>
 
@@ -289,7 +289,7 @@ export default function Dashboard() {
                           Modelo: {incidentPredictions[incidente.id].modelo || 'No disponible'}
                         </span>
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
-                          Origen: {incidentPredictions[incidente.id].fuente === 'api' ? 'Produccion' : 'Contingencia'}
+                          Origen: {incidentPredictions[incidente.id].fuente === 'api' ? 'Produccion' : 'Contingencia local'}
                         </span>
                       </div>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Factores principales</p>
@@ -311,7 +311,7 @@ export default function Dashboard() {
             <section className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm shadow-slate-200/60">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold tracking-tight text-slate-950">Riesgo proximas 24h</h3>
+                  <h3 className="text-lg font-semibold tracking-tight text-slate-950">Riesgo proximas 24 h</h3>
                   <p className="text-sm text-slate-500">Estimacion basada en narrativa, clima, fase de vuelo y contexto operacional.</p>
                 </div>
                 <span className="text-3xl font-semibold text-sky-700">{stats.riesgoFuturo}%</span>
@@ -322,13 +322,13 @@ export default function Dashboard() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-800">Explicabilidad IA</p>
                   <p className="mt-2 text-sm leading-6 text-sky-900">
                     El motor pondera narrativa del incidente, fase de vuelo, condiciones de luz, visibilidad,
-                    viento y otras senales operacionales para priorizar riesgo.
+                    viento y otras señales operacionales para priorizar riesgo.
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">Motor desplegado</p>
                   <p className="mt-2 text-sm leading-6 text-emerald-900">
-                    Entrenado con datos oficiales NTSB y base local expandible con JST Argentina e incidentes de operacion.
+                    Entrenado con datos oficiales NTSB y base local expandible con JST Argentina e incidentes operativos propios.
                   </p>
                 </div>
               </div>

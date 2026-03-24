@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { api } from '../lib/api';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import { api } from '../lib/api';
 import type { Alerta } from '../lib/types';
 
 interface Props {
@@ -18,7 +18,7 @@ export default function AlertasPanel({ alertas, onUpdate }: Props) {
       await onUpdate();
     } catch (error) {
       console.error('Error resolving alert:', error);
-      alert('Error al resolver la alerta');
+      alert('No se pudo resolver la alerta.');
     } finally {
       setProcessingId(null);
     }
@@ -26,6 +26,7 @@ export default function AlertasPanel({ alertas, onUpdate }: Props) {
 
   function getCriticidadColor(nivel: string | null) {
     switch (nivel) {
+      case 'Critico':
       case 'Crítico':
       case 'Alta':
         return 'bg-red-50 border-red-300';
@@ -39,8 +40,9 @@ export default function AlertasPanel({ alertas, onUpdate }: Props) {
   }
 
   function getCriticidadIcon(nivel: string | null) {
-    const baseClass = 'w-5 h-5';
+    const baseClass = 'h-5 w-5';
     switch (nivel) {
+      case 'Critico':
       case 'Crítico':
       case 'Alta':
         return <AlertCircle className={`${baseClass} text-red-600`} />;
@@ -54,53 +56,49 @@ export default function AlertasPanel({ alertas, onUpdate }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">Alertas Operacionales</h2>
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-lg">
+      <h2 className="mb-4 text-lg font-bold text-gray-900">Alertas operacionales</h2>
+      <div className="max-h-96 space-y-3 overflow-y-auto">
         {alertas.map((alerta) => (
           <div
             key={alerta.id}
-            className={`border rounded-lg p-4 ${getCriticidadColor(alerta.nivel_criticidad)} transition hover:shadow-md`}
+            className={`rounded-lg border p-4 transition hover:shadow-md ${getCriticidadColor(alerta.nivel_criticidad)}`}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1">
+              <div className="flex flex-1 items-start gap-3">
                 {getCriticidadIcon(alerta.nivel_criticidad)}
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="mb-1 flex items-center gap-2">
                     <span className="font-semibold text-gray-900">{alerta.tipo_alerta}</span>
                     <span className="text-xs text-gray-500">
-                      {new Date(alerta.fecha_generacion).toLocaleDateString('es-ES')}
+                      {new Date(alerta.fecha_generacion).toLocaleDateString('es-AR')}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 mb-2">{alerta.mensaje}</p>
+                  <p className="mb-2 text-sm text-gray-700">{alerta.mensaje}</p>
                   {alerta.aeropuertos && (
-                    <p className="text-xs text-gray-600">
-                      Aeropuerto: {alerta.aeropuertos.nombre}
-                    </p>
+                    <p className="text-xs text-gray-600">Aeropuerto: {alerta.aeropuertos.nombre}</p>
                   )}
-                  {alerta.score_predictivo && (
-                    <p className="text-xs text-gray-600">
-                      Score predictivo: {alerta.score_predictivo}%
-                    </p>
+                  {alerta.score_predictivo !== null && alerta.score_predictivo !== undefined && (
+                    <p className="text-xs text-gray-600">Score predictivo: {alerta.score_predictivo}%</p>
                   )}
                 </div>
               </div>
               <button
                 onClick={() => handleResolve(alerta.id)}
                 disabled={processingId === alerta.id}
-                className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-xs rounded-lg hover:bg-green-200 transition disabled:opacity-50"
+                className="flex items-center gap-1 rounded-lg bg-green-100 px-3 py-1 text-xs text-green-700 transition hover:bg-green-200 disabled:opacity-50"
               >
-                <CheckCircle className="w-3 h-3" />
+                <CheckCircle className="h-3 w-3" />
                 {processingId === alerta.id ? 'Resolviendo...' : 'Resolver'}
               </button>
             </div>
           </div>
         ))}
         {alertas.length === 0 && (
-          <div className="text-center py-12">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+          <div className="py-12 text-center">
+            <CheckCircle className="mx-auto mb-3 h-12 w-12 text-green-500" />
             <p className="text-gray-500">No hay alertas pendientes</p>
-            <p className="text-sm text-gray-400 mt-1">Todas las alertas están resueltas</p>
+            <p className="mt-1 text-sm text-gray-400">Todas las alertas estan resueltas.</p>
           </div>
         )}
       </div>

@@ -108,7 +108,7 @@ export const api = {
     if (!navigator.onLine) return { procesadas: 0, pendientes: getOfflineQueueSize(), conflictos: getOfflineConflictCount() };
 
     let procesadas = 0;
-    for (const mutation of getOfflineQueue()) {
+    for (const mutation of await getOfflineQueue()) {
       try {
         const response = await fetch(`${apiBaseUrl}${mutation.path}`, {
           method: mutation.method,
@@ -125,24 +125,24 @@ export const api = {
             message = response.statusText || message;
           }
 
-          addOfflineConflict({
+          await addOfflineConflict({
             ...mutation,
             message,
             statusCode: response.status,
           });
-          removeOfflineMutation(mutation.id);
+          await removeOfflineMutation(mutation.id);
           continue;
         }
 
-        removeOfflineMutation(mutation.id);
+        await removeOfflineMutation(mutation.id);
         procesadas += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Error de red durante sincronizacion';
-        addOfflineConflict({
+        await addOfflineConflict({
           ...mutation,
           message,
         });
-        removeOfflineMutation(mutation.id);
+        await removeOfflineMutation(mutation.id);
         break;
       }
     }
@@ -191,7 +191,7 @@ export const api = {
     longitud: number | null;
   }) {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'POST',
         path: '/incidentes',
         body: JSON.stringify(payload),
@@ -220,7 +220,7 @@ export const api = {
     longitud: number | null;
   }) {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'PUT',
         path: `/incidentes/${id}`,
         body: JSON.stringify(payload),
@@ -251,7 +251,7 @@ export const api = {
   },
   async resolveAlerta(alertaId: number) {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'POST',
         path: `/alertas/${alertaId}/resolve`,
         body: JSON.stringify({}),
@@ -317,7 +317,7 @@ export const api = {
     observaciones?: string | null;
   }) {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'POST',
         path: '/institutional/inspections',
         body: JSON.stringify(payload),
@@ -332,7 +332,7 @@ export const api = {
   },
   async deleteInspection(inspectionId: number) {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'DELETE',
         path: `/institutional/inspections/${inspectionId}`,
         label: 'Eliminar inspeccion',
@@ -345,7 +345,7 @@ export const api = {
   },
   async deleteTestInspections(title = 'auditoria', organizationKey = 'default') {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'DELETE',
         path: `/institutional/inspections?organization_key=${organizationKey}&title=${encodeURIComponent(title)}&only_pending=true`,
         label: 'Eliminar inspecciones de prueba',
@@ -373,7 +373,7 @@ export const api = {
     fecha_vencimiento?: string | null;
   }) {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'POST',
         path: '/institutional/corrective-actions',
         body: JSON.stringify(payload),
@@ -388,7 +388,7 @@ export const api = {
   },
   async updateCorrectiveActionStatus(actionId: number, estado: string) {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'POST',
         path: `/institutional/corrective-actions/${actionId}/status`,
         body: JSON.stringify({ estado }),
@@ -445,7 +445,7 @@ export const api = {
   },
   async markNotificationRead(notificationId: number, estado = 'Leida') {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'POST',
         path: `/institutional/notifications/${notificationId}/read`,
         body: JSON.stringify({ estado }),
@@ -460,7 +460,7 @@ export const api = {
   },
   async markAllNotificationsRead(organizationKey = 'default') {
     if (!navigator.onLine) {
-      enqueueOfflineMutation({
+      await enqueueOfflineMutation({
         method: 'POST',
         path: `/institutional/notifications/read-all?organization_key=${organizationKey}`,
         body: JSON.stringify({}),

@@ -3,10 +3,14 @@ import { AlertTriangle, RefreshCcw, Trash2 } from 'lucide-react';
 import { getOfflineConflicts, removeOfflineConflict, retryOfflineConflict, subscribeOfflineQueue, type OfflineConflict } from '../lib/offlineQueue';
 
 export default function OfflineConflictsPanel() {
-  const [conflicts, setConflicts] = useState<OfflineConflict[]>(getOfflineConflicts());
+  const [conflicts, setConflicts] = useState<OfflineConflict[]>([]);
 
   useEffect(() => {
-    return subscribeOfflineQueue(() => setConflicts(getOfflineConflicts()));
+    const load = async () => setConflicts(await getOfflineConflicts());
+    void load();
+    return subscribeOfflineQueue(() => {
+      void load();
+    });
   }, []);
 
   if (!conflicts.length) return null;
@@ -37,14 +41,18 @@ export default function OfflineConflictsPanel() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => retryOfflineConflict(conflict.id)}
+                    onClick={() => {
+                      void retryOfflineConflict(conflict.id);
+                    }}
                     className="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-medium text-red-800 transition hover:bg-red-100"
                   >
                     <RefreshCcw className="h-3.5 w-3.5" />
                     Reintentar
                   </button>
                   <button
-                    onClick={() => removeOfflineConflict(conflict.id)}
+                    onClick={() => {
+                      void removeOfflineConflict(conflict.id);
+                    }}
                     className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
