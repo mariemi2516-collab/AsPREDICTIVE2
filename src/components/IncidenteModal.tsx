@@ -5,6 +5,20 @@ import { api } from '../lib/api';
 import type { Aeronave, Aeropuerto, Incidente, TipoIncidente } from '../lib/types';
 import { getPrediccionRiesgo } from '../services/predictiveService';
 
+const FASES_VUELO = [
+  'Plataforma',
+  'Rodaje de salida',
+  'Despegue',
+  'Ascenso inicial',
+  'Ascenso',
+  'Crucero',
+  'Descenso',
+  'Aproximacion',
+  'Aterrizaje',
+  'Rodaje de llegada',
+  'Estacionamiento',
+];
+
 interface Props {
   incidente: Incidente | null;
   onClose: () => void;
@@ -192,13 +206,18 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Fase de Vuelo
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.fase_vuelo}
                 onChange={(e) => setFormData({ ...formData, fase_vuelo: e.target.value })}
-                placeholder="ej: Despegue, Aterrizaje, Crucero"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              >
+                <option value="">Seleccionar fase</option>
+                {FASES_VUELO.map((fase) => (
+                  <option key={fase} value={fase}>
+                    {fase}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

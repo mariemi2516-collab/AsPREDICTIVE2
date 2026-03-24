@@ -92,6 +92,45 @@ ARGENTINA_AIRCRAFT = [
 ]
 
 
+INCIDENT_TYPES = [
+    {"codigo_oaci": "REIN", "nombre": "Reingreso de Pista", "categoria": "Pista"},
+    {"codigo_oaci": "BIRD", "nombre": "Colision con Fauna", "categoria": "Fauna"},
+    {"codigo_oaci": "ENGINE", "nombre": "Falla de Motor", "categoria": "Tecnico"},
+    {"codigo_oaci": "RUNWAY", "nombre": "Incursion de Pista", "categoria": "Pista"},
+    {"codigo_oaci": "WX", "nombre": "Meteorologia Adversa", "categoria": "Meteorologia"},
+    {"codigo_oaci": "TURB", "nombre": "Turbulencia Severa", "categoria": "Meteorologia"},
+    {"codigo_oaci": "LASER", "nombre": "Iluminacion Laser", "categoria": "Seguridad"},
+    {"codigo_oaci": "SEC", "nombre": "Amenaza de Seguridad", "categoria": "Seguridad"},
+    {"codigo_oaci": "TCAS", "nombre": "Resolucion TCAS", "categoria": "Separacion"},
+    {"codigo_oaci": "LOSSSEP", "nombre": "Perdida de Separacion", "categoria": "Separacion"},
+    {"codigo_oaci": "COMM", "nombre": "Falla de Comunicaciones", "categoria": "ATM"},
+    {"codigo_oaci": "NAV", "nombre": "Falla de Navegacion", "categoria": "ATM"},
+    {"codigo_oaci": "BRSH", "nombre": "Frenado Deficiente en Pista", "categoria": "Pista"},
+    {"codigo_oaci": "FOD", "nombre": "Objeto Extrano en Pista", "categoria": "Pista"},
+    {"codigo_oaci": "TAIL", "nombre": "Tail Strike", "categoria": "Operacion"},
+    {"codigo_oaci": "GEAR", "nombre": "Falla de Tren de Aterrizaje", "categoria": "Tecnico"},
+    {"codigo_oaci": "HYD", "nombre": "Falla Hidraulica", "categoria": "Tecnico"},
+    {"codigo_oaci": "SMOKE", "nombre": "Humo o Fuego a Bordo", "categoria": "Emergencia"},
+    {"codigo_oaci": "MED", "nombre": "Emergencia Medica", "categoria": "Emergencia"},
+    {"codigo_oaci": "FUEL", "nombre": "Combustible Critico", "categoria": "Operacion"},
+]
+
+
+FLIGHT_PHASES = [
+    "Plataforma",
+    "Rodaje de salida",
+    "Despegue",
+    "Ascenso inicial",
+    "Ascenso",
+    "Crucero",
+    "Descenso",
+    "Aproximacion",
+    "Aterrizaje",
+    "Rodaje de llegada",
+    "Estacionamiento",
+]
+
+
 def _sync_airports(db: Session) -> None:
     existing_by_icao = {airport.codigo_icao: airport for airport in db.scalars(select(Aeropuerto)).all()}
 
@@ -125,6 +164,19 @@ def _sync_aircraft(db: Session) -> None:
         db.add(Aeronave(**payload))
 
 
+def _sync_incident_types(db: Session) -> None:
+    existing_by_code = {incident_type.codigo_oaci: incident_type for incident_type in db.scalars(select(TipoIncidente)).all()}
+
+    for payload in INCIDENT_TYPES:
+        incident_type = existing_by_code.get(payload["codigo_oaci"])
+        if incident_type:
+            incident_type.nombre = payload["nombre"]
+            incident_type.categoria = payload["categoria"]
+            continue
+
+        db.add(TipoIncidente(**payload))
+
+
 def seed_initial_data(db: Session) -> None:
     if not db.scalar(select(Usuario.id).limit(1)):
         db.add(
@@ -141,14 +193,6 @@ def seed_initial_data(db: Session) -> None:
 
     _sync_aircraft(db)
 
-    if not db.scalar(select(TipoIncidente.id).limit(1)):
-        db.add_all(
-            [
-                TipoIncidente(codigo_oaci="REIN", nombre="Reingreso Pista", categoria="Pista"),
-                TipoIncidente(codigo_oaci="BIRD", nombre="Colision con Fauna", categoria="Fauna"),
-                TipoIncidente(codigo_oaci="ENGINE", nombre="Falla de Motor", categoria="Tecnico"),
-                TipoIncidente(codigo_oaci="RUNWAY", nombre="Incursion de Pista", categoria="Pista"),
-            ]
-        )
+    _sync_incident_types(db)
 
     db.commit()
