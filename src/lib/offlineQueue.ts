@@ -7,7 +7,14 @@ export type OfflineMutation = {
   createdAt: string;
 };
 
+export type OfflineConflict = OfflineMutation & {
+  failedAt: string;
+  message: string;
+  statusCode?: number;
+};
+
 const OFFLINE_QUEUE_KEY = 'aspredictive_offline_queue';
+const OFFLINE_CONFLICTS_KEY = 'aspredictive_offline_conflicts';
 const OFFLINE_QUEUE_EVENT = 'aspredictive-offline-queue-updated';
 
 function emitQueueEvent() {
@@ -25,8 +32,24 @@ function readQueue(): OfflineMutation[] {
   }
 }
 
+function readConflicts(): OfflineConflict[] {
+  try {
+    const raw = localStorage.getItem(OFFLINE_CONFLICTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function writeQueue(queue: OfflineMutation[]) {
   localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  emitQueueEvent();
+}
+
+function writeConflicts(conflicts: OfflineConflict[]) {
+  localStorage.setItem(OFFLINE_CONFLICTS_KEY, JSON.stringify(conflicts));
   emitQueueEvent();
 }
 
@@ -36,6 +59,14 @@ export function getOfflineQueue() {
 
 export function getOfflineQueueSize() {
   return readQueue().length;
+}
+
+export function getOfflineConflicts() {
+  return readConflicts();
+}
+
+export function getOfflineConflictCount() {
+  return readConflicts().length;
 }
 
 export function enqueueOfflineMutation(mutation: Omit<OfflineMutation, 'id' | 'createdAt'>) {
@@ -53,8 +84,40 @@ export function removeOfflineMutation(id: string) {
   writeQueue(queue);
 }
 
+export function addOfflineConflict(conflict: Omit<OfflineConflict, 'failedAt'>) {
+  const conflicts = readConflicts();
+  conflicts.unshift({
+    ...conflict,
+    failedAt: new Date().toISOString(),
+  });
+  writeConflicts(conflicts.slice(0, 50));
+}
+
+export function removeOfflineConflict(id: string) {
+  const conflicts = readConflicts().filter((item) => item.id !== id);
+  writeConflicts(conflicts);
+}
+
+export function retryOfflineConflict(id: string) {
+  const conflicts = readConflicts();
+  const conflict = conflicts.find((item) => item.id === id);
+  if (!conflict) return;
+
+  enqueueOfflineMutation({
+    method: conflict.method,
+    path: conflict.path,
+    body: conflict.body,
+    label: conflict.label,
+  });
+  removeOfflineConflict(id);
+}
+
 export function clearOfflineQueue() {
   writeQueue([]);
+}
+
+export function clearOfflineConflicts() {
+  writeConflicts([]);
 }
 
 export function subscribeOfflineQueue(listener: () => void) {

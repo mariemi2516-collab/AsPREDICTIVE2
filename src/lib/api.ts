@@ -20,7 +20,7 @@ import type {
   TipoIncidente,
   Usuario,
 } from './types';
-import { enqueueOfflineMutation, getOfflineQueue, getOfflineQueueSize, removeOfflineMutation } from './offlineQueue';
+import { addOfflineConflict, enqueueOfflineMutation, getOfflineConflictCount, getOfflineQueue, getOfflineQueueSize, removeOfflineMutation } from './offlineQueue';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 const TOKEN_KEY = 'aviation_auth_token';
@@ -103,26 +103,51 @@ export const api = {
   },
   getToken,
   getOfflineQueueSize,
+  getOfflineConflictCount,
   async syncOfflineQueue() {
-    if (!navigator.onLine) return { procesadas: 0, pendientes: getOfflineQueueSize() };
+    if (!navigator.onLine) return { procesadas: 0, pendientes: getOfflineQueueSize(), conflictos: getOfflineConflictCount() };
 
     let procesadas = 0;
     for (const mutation of getOfflineQueue()) {
-      const response = await fetch(`${apiBaseUrl}${mutation.path}`, {
-        method: mutation.method,
-        headers: buildHeaders(undefined, true),
-        body: mutation.body,
-      });
+      try {
+        const response = await fetch(`${apiBaseUrl}${mutation.path}`, {
+          method: mutation.method,
+          headers: buildHeaders(undefined, true),
+          body: mutation.body,
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          let message = 'Conflicto al sincronizar';
+          try {
+            const errorBody = await response.json();
+            message = errorBody.detail || errorBody.message || message;
+          } catch {
+            message = response.statusText || message;
+          }
+
+          addOfflineConflict({
+            ...mutation,
+            message,
+            statusCode: response.status,
+          });
+          removeOfflineMutation(mutation.id);
+          continue;
+        }
+
+        removeOfflineMutation(mutation.id);
+        procesadas += 1;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error de red durante sincronizacion';
+        addOfflineConflict({
+          ...mutation,
+          message,
+        });
+        removeOfflineMutation(mutation.id);
         break;
       }
-
-      removeOfflineMutation(mutation.id);
-      procesadas += 1;
     }
 
-    return { procesadas, pendientes: getOfflineQueueSize() };
+    return { procesadas, pendientes: getOfflineQueueSize(), conflictos: getOfflineConflictCount() };
   },
   async signIn(email: string, password: string) {
     return request<{ access_token: string; user: Usuario }>('/auth/login', {

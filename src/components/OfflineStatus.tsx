@@ -6,6 +6,7 @@ import { subscribeOfflineQueue } from '../lib/offlineQueue';
 export default function OfflineStatus() {
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(api.getOfflineQueueSize());
+  const [conflicts, setConflicts] = useState(api.getOfflineConflictCount());
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
@@ -15,13 +16,17 @@ export default function OfflineStatus() {
       try {
         const result = await api.syncOfflineQueue();
         setPending(result.pendientes);
+        setConflicts(result.conflictos);
       } finally {
         setSyncing(false);
       }
     };
 
     const handleOffline = () => setOnline(false);
-    const unsubscribe = subscribeOfflineQueue(() => setPending(api.getOfflineQueueSize()));
+    const unsubscribe = subscribeOfflineQueue(() => {
+      setPending(api.getOfflineQueueSize());
+      setConflicts(api.getOfflineConflictCount());
+    });
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -33,7 +38,7 @@ export default function OfflineStatus() {
     };
   }, []);
 
-  if (online && pending === 0 && !syncing) return null;
+  if (online && pending === 0 && conflicts === 0 && !syncing) return null;
 
   return (
     <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -46,7 +51,7 @@ export default function OfflineStatus() {
             </p>
             <p className="text-xs text-amber-900/80">
               {online
-                ? `${pending} operaciones pendientes de sincronizacion`
+                ? `${pending} pendientes y ${conflicts} conflictos por revisar`
                 : 'Los cambios compatibles se guardaran localmente y se enviaran al reconectar.'}
             </p>
           </div>
@@ -58,6 +63,7 @@ export default function OfflineStatus() {
               try {
                 const result = await api.syncOfflineQueue();
                 setPending(result.pendientes);
+                setConflicts(result.conflictos);
               } finally {
                 setSyncing(false);
               }

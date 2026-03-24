@@ -25,8 +25,9 @@
 ## Regla actual de conflictos
 
 - primera version: se reenvian las operaciones en el orden en que fueron capturadas
-- si una operacion falla en sincronizacion, la cola se detiene en ese punto
-- el criterio actual es operativo y simple: ultima operacion reenviada prevalece en backend
+- si una operacion falla en sincronizacion, se mueve a una bandeja local de conflictos
+- el usuario puede reintentar o descartar manualmente cada conflicto
+- el criterio actual es operativo y simple: la ultima operacion aceptada por backend prevalece
 
 ## Limitaciones actuales
 
@@ -34,6 +35,7 @@
 - no hay soporte offline completo para capacitaciones encadenadas
 - no hay almacenamiento cifrado local
 - no hay background sync del navegador con reintento inteligente por lotes
+- no hay merge semantico por campo ni conciliacion automatica por version
 
 ## Siguiente evolucion recomendada
 

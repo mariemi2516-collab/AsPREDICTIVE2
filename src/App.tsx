@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import OfflineConflictsPanel from './components/OfflineConflictsPanel';
 import OfflineStatus from './components/OfflineStatus';
 
 function AppContent() {
@@ -24,6 +25,7 @@ function App() {
   return (
     <AuthProvider>
       <OfflineStatus />
+      <OfflineConflictsPanel />
       <AppContent />
     </AuthProvider>
   );
