@@ -116,6 +116,10 @@ class IncidentePayload(BaseModel):
     descripcion: str | None = None
     nivel_riesgo: NivelRiesgo
     fase_vuelo: str | None = None
+    condicion_meteorologica: str | None = None
+    condicion_luz: str | None = None
+    visibilidad_millas: float | None = None
+    viento_kt: float | None = None
     latitud: float | None = None
     longitud: float | None = None
 
@@ -130,6 +134,10 @@ class IncidenteOut(BaseModel):
     descripcion: str | None = None
     nivel_riesgo: str | None = None
     fase_vuelo: str | None = None
+    condicion_meteorologica: str | None = None
+    condicion_luz: str | None = None
+    visibilidad_millas: float | None = None
+    viento_kt: float | None = None
     latitud: float | None = None
     longitud: float | None = None
     reportado_por: str | None = None

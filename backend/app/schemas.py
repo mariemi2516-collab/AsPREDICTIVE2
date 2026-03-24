@@ -13,6 +13,10 @@ class IncidentePayload(BaseModel):
     tipo_incidente_id: int | None = None
     aeronave_id: int | None = None
     fase_vuelo: str | None = ""
+    condicion_meteorologica: str | None = ""
+    condicion_luz: str | None = ""
+    visibilidad_millas: float | None = None
+    viento_kt: float | None = None
     descripcion: str | None = ""
     latitud: float | None = None
     longitud: float | None = None

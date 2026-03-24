@@ -103,6 +103,10 @@ def to_incidente_out(incidente: Incidente) -> IncidenteOut:
         descripcion=incidente.descripcion,
         nivel_riesgo=incidente.nivel_riesgo,
         fase_vuelo=incidente.fase_vuelo,
+        condicion_meteorologica=incidente.condicion_meteorologica,
+        condicion_luz=incidente.condicion_luz,
+        visibilidad_millas=incidente.visibilidad_millas,
+        viento_kt=incidente.viento_kt,
         latitud=incidente.latitud,
         longitud=incidente.longitud,
         reportado_por=incidente.reportado_por,
@@ -199,6 +203,10 @@ def calculate_riesgo_futuro(incidentes: list[Incidente]) -> int:
                 tipo_incidente_id=incidente.tipo_incidente_id,
                 aeronave_id=incidente.aeronave_id,
                 fase_vuelo=incidente.fase_vuelo,
+                condicion_meteorologica=incidente.condicion_meteorologica,
+                condicion_luz=incidente.condicion_luz,
+                visibilidad_millas=incidente.visibilidad_millas,
+                viento_kt=incidente.viento_kt,
                 descripcion=incidente.descripcion,
                 latitud=incidente.latitud,
                 longitud=incidente.longitud,
@@ -218,6 +226,10 @@ def train_predictive_model_from_db(db: Session) -> dict[str, Any]:
             "tipo_incidente_id": incidente.tipo_incidente_id,
             "aeronave_id": incidente.aeronave_id,
             "fase_vuelo": incidente.fase_vuelo,
+            "condicion_meteorologica": incidente.condicion_meteorologica,
+            "condicion_luz": incidente.condicion_luz,
+            "visibilidad_millas": incidente.visibilidad_millas,
+            "viento_kt": incidente.viento_kt,
             "descripcion": incidente.descripcion,
             "latitud": incidente.latitud,
             "longitud": incidente.longitud,
@@ -430,6 +442,10 @@ def create_incidente(
         descripcion=payload.descripcion,
         nivel_riesgo=payload.nivel_riesgo,
         fase_vuelo=payload.fase_vuelo,
+        condicion_meteorologica=payload.condicion_meteorologica,
+        condicion_luz=payload.condicion_luz,
+        visibilidad_millas=payload.visibilidad_millas,
+        viento_kt=payload.viento_kt,
         latitud=payload.latitud,
         longitud=payload.longitud,
         reportado_por=current_user.id,
@@ -470,6 +486,10 @@ def update_incidente(
     incidente.descripcion = payload.descripcion
     incidente.nivel_riesgo = payload.nivel_riesgo
     incidente.fase_vuelo = payload.fase_vuelo
+    incidente.condicion_meteorologica = payload.condicion_meteorologica
+    incidente.condicion_luz = payload.condicion_luz
+    incidente.visibilidad_millas = payload.visibilidad_millas
+    incidente.viento_kt = payload.viento_kt
     incidente.latitud = payload.latitud
     incidente.longitud = payload.longitud
     write_audit_log(

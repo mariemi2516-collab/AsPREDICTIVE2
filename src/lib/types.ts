@@ -59,6 +59,10 @@ export interface Incidente {
   descripcion: string | null;
   nivel_riesgo: NivelRiesgo | null;
   fase_vuelo: string | null;
+  condicion_meteorologica: string | null;
+  condicion_luz: string | null;
+  visibilidad_millas: number | null;
+  viento_kt: number | null;
   latitud: number | null;
   longitud: number | null;
   reportado_por: string | null;

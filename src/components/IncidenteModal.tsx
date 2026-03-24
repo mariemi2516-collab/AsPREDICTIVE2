@@ -20,6 +20,8 @@ const FASES_VUELO = [
 ];
 
 const NIVELES_RIESGO = ['Bajo', 'Medio', 'Alto', 'Critico'];
+const CONDICIONES_METEOROLOGICAS = ['VMC', 'IMC', 'Lluvia', 'Tormenta', 'Niebla', 'Viento fuerte', 'Ceniza', 'Nieve'];
+const CONDICIONES_LUZ = ['Dia', 'Noche', 'Crepusculo', 'Amanecer'];
 
 interface Props {
   incidente: Incidente | null;
@@ -41,6 +43,10 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
     descripcion: incidente?.descripcion || '',
     nivel_riesgo: incidente?.nivel_riesgo || 'Bajo',
     fase_vuelo: incidente?.fase_vuelo || '',
+    condicion_meteorologica: incidente?.condicion_meteorologica || '',
+    condicion_luz: incidente?.condicion_luz || '',
+    visibilidad_millas: incidente?.visibilidad_millas || '',
+    viento_kt: incidente?.viento_kt || '',
     latitud: incidente?.latitud || '',
     longitud: incidente?.longitud || '',
   });
@@ -82,6 +88,10 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
         descripcion: formData.descripcion,
         nivel_riesgo: prediccion.nivel,
         fase_vuelo: formData.fase_vuelo,
+        condicion_meteorologica: formData.condicion_meteorologica || null,
+        condicion_luz: formData.condicion_luz || null,
+        visibilidad_millas: formData.visibilidad_millas ? parseFloat(formData.visibilidad_millas as string) : null,
+        viento_kt: formData.viento_kt ? parseFloat(formData.viento_kt as string) : null,
         latitud: formData.latitud ? parseFloat(formData.latitud as string) : null,
         longitud: formData.longitud ? parseFloat(formData.longitud as string) : null,
         reportado_por: user?.id || null,
@@ -208,6 +218,62 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Condicion meteorologica</label>
+              <select
+                value={formData.condicion_meteorologica}
+                onChange={(e) => setFormData({ ...formData, condicion_meteorologica: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleccionar condicion</option>
+                {CONDICIONES_METEOROLOGICAS.map((condicion) => (
+                  <option key={condicion} value={condicion}>
+                    {condicion}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Condicion de luz</label>
+              <select
+                value={formData.condicion_luz}
+                onChange={(e) => setFormData({ ...formData, condicion_luz: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleccionar condicion</option>
+                {CONDICIONES_LUZ.map((condicion) => (
+                  <option key={condicion} value={condicion}>
+                    {condicion}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Visibilidad (millas)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formData.visibilidad_millas}
+                onChange={(e) => setFormData({ ...formData, visibilidad_millas: e.target.value })}
+                placeholder="10"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Viento (kt)</label>
+              <input
+                type="number"
+                step="1"
+                value={formData.viento_kt}
+                onChange={(e) => setFormData({ ...formData, viento_kt: e.target.value })}
+                placeholder="18"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+              />
             </div>
 
             <div>
