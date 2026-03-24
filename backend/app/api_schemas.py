@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 RolUsuario = Literal["administrador", "inspector", "analista", "supervisor"]
@@ -13,7 +13,7 @@ NivelRiesgo = Literal["Bajo", "Medio", "Alto", "Crítico"]
 class UsuarioOut(BaseModel):
     id: str
     nombre: str
-    email: EmailStr
+    email: str
     rol: RolUsuario
     estado: bool
     ultimo_login: datetime | None = None
@@ -21,7 +21,7 @@ class UsuarioOut(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
