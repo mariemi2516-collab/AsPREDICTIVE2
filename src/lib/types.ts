@@ -104,3 +104,39 @@ export interface FormCatalogs {
   tipos_incidente: TipoIncidente[];
   aeronaves: Aeronave[];
 }
+
+export interface ReporteTopItem {
+  clave: string;
+  total: number;
+}
+
+export interface ReporteEjecutivo {
+  generado_en: string;
+  periodo_dias: number;
+  organismo_referencia: string;
+  marco_regulatorio: string[];
+  estado_modelo: {
+    version: string;
+    registros_entrenamiento: number;
+    accuracy: number | null;
+  };
+  resumen_operacional: {
+    incidentes_periodo: number;
+    alertas_pendientes: number;
+    alertas_resueltas_periodo: number;
+    usuarios_activos: number;
+    aeropuertos_monitoreados: number;
+    riesgo_promedio: number;
+    riesgo_futuro: number;
+  };
+  trazabilidad: {
+    incidentes_con_clima: number;
+    incidentes_con_geolocalizacion: number;
+    incidentes_auditados: number;
+    acciones_auditadas_periodo: number;
+  };
+  top_aeropuertos: ReporteTopItem[];
+  top_tipos_incidente: ReporteTopItem[];
+  distribucion_riesgo: ReporteTopItem[];
+  recomendaciones: string[];
+}

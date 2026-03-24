@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 from .api_schemas import (
     AlertaCreate,
     AlertaOut,
+    ExecutiveReportResponse,
     AuthResponse,
     CatalogAeronaveOut,
     CatalogAeropuertoOut,
@@ -216,6 +217,109 @@ def calculate_riesgo_futuro(incidentes: list[Incidente]) -> int:
         for incidente in incidentes
     ]
     return round(sum(pred.score for pred in predicciones) / len(predicciones))
+
+
+def build_top_items(items: list[tuple[str, int]]) -> list[dict[str, int | str]]:
+    return [{"clave": key, "total": int(total)} for key, total in items if key]
+
+
+def build_executive_report(db: Session, periodo_dias: int) -> ExecutiveReportResponse:
+    cutoff = datetime.utcnow() - timedelta(days=periodo_dias)
+    incidentes_periodo = list(
+        db.scalars(
+            select(Incidente)
+            .options(joinedload(Incidente.aeropuerto), joinedload(Incidente.tipo_incidente), joinedload(Incidente.aeronave))
+            .where(Incidente.fecha_hora >= cutoff)
+            .order_by(Incidente.fecha_hora.desc())
+        )
+    )
+    alertas_pendientes = db.scalar(select(func.count()).select_from(Alerta).where(Alerta.estado == "Pendiente")) or 0
+    alertas_resueltas_periodo = (
+        db.scalar(select(func.count()).select_from(Alerta).where(Alerta.fecha_resolucion.is_not(None), Alerta.fecha_resolucion >= cutoff))
+        or 0
+    )
+    usuarios_activos = db.scalar(select(func.count()).select_from(Usuario).where(Usuario.estado.is_(True))) or 0
+    aeropuertos_monitoreados = db.scalar(select(func.count()).select_from(Aeropuerto)) or 0
+    acciones_auditadas_periodo = db.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.created_at >= cutoff)) or 0
+    incidentes_auditados = (
+        db.scalar(select(func.count(func.distinct(AuditLog.resource_id))).where(AuditLog.resource_type == "incidente", AuditLog.created_at >= cutoff))
+        or 0
+    )
+
+    top_aeropuertos_raw = db.execute(
+        select(Aeropuerto.nombre, func.count(Incidente.id))
+        .join(Incidente, Incidente.aeropuerto_id == Aeropuerto.id)
+        .where(Incidente.fecha_hora >= cutoff)
+        .group_by(Aeropuerto.nombre)
+        .order_by(func.count(Incidente.id).desc(), Aeropuerto.nombre.asc())
+        .limit(5)
+    ).all()
+    top_tipos_raw = db.execute(
+        select(TipoIncidente.nombre, func.count(Incidente.id))
+        .join(Incidente, Incidente.tipo_incidente_id == TipoIncidente.id)
+        .where(Incidente.fecha_hora >= cutoff)
+        .group_by(TipoIncidente.nombre)
+        .order_by(func.count(Incidente.id).desc(), TipoIncidente.nombre.asc())
+        .limit(5)
+    ).all()
+    distribucion_riesgo_raw = db.execute(
+        select(Incidente.nivel_riesgo, func.count(Incidente.id))
+        .where(Incidente.fecha_hora >= cutoff, Incidente.nivel_riesgo.is_not(None))
+        .group_by(Incidente.nivel_riesgo)
+        .order_by(func.count(Incidente.id).desc())
+    ).all()
+
+    incidentes_con_clima = sum(
+        1
+        for incidente in incidentes_periodo
+        if incidente.condicion_meteorologica or incidente.condicion_luz or incidente.visibilidad_millas is not None or incidente.viento_kt is not None
+    )
+    incidentes_con_geolocalizacion = sum(
+        1 for incidente in incidentes_periodo if incidente.latitud is not None and incidente.longitud is not None
+    )
+
+    metricas_modelo = predictor.bundle.get("metrics", {})
+    recomendaciones = [
+        "Incrementar la carga de incidentes argentinos con clima estructurado para fortalecer el ajuste local del modelo.",
+        "Priorizar seguimiento sobre aeropuertos y tipos de incidente con mayor recurrencia en el periodo analizado.",
+        "Mantener trazabilidad de acciones correctivas y cierre de alertas para evidencia regulatoria ante auditorias.",
+    ]
+
+    return ExecutiveReportResponse(
+        generado_en=datetime.utcnow(),
+        periodo_dias=periodo_dias,
+        organismo_referencia="ANAC / SSP / PNSO",
+        marco_regulatorio=[
+            "Sistema de Gestion de Seguridad Operacional (SMS)",
+            "Programa Estatal de Seguridad Operacional (SSP)",
+            "Programa Nacional de Seguridad Operacional (PNSO)",
+            "Trazabilidad de incidentes, alertas y acciones auditables",
+        ],
+        estado_modelo={
+            "version": predictor.model_version,
+            "registros_entrenamiento": int(predictor.bundle.get("training_rows", 0)),
+            "accuracy": metricas_modelo.get("accuracy"),
+        },
+        resumen_operacional={
+            "incidentes_periodo": len(incidentes_periodo),
+            "alertas_pendientes": int(alertas_pendientes),
+            "alertas_resueltas_periodo": int(alertas_resueltas_periodo),
+            "usuarios_activos": int(usuarios_activos),
+            "aeropuertos_monitoreados": int(aeropuertos_monitoreados),
+            "riesgo_promedio": calculate_riesgo_promedio(incidentes_periodo),
+            "riesgo_futuro": calculate_riesgo_futuro(incidentes_periodo[:10]),
+        },
+        trazabilidad={
+            "incidentes_con_clima": int(incidentes_con_clima),
+            "incidentes_con_geolocalizacion": int(incidentes_con_geolocalizacion),
+            "incidentes_auditados": int(incidentes_auditados),
+            "acciones_auditadas_periodo": int(acciones_auditadas_periodo),
+        },
+        top_aeropuertos=build_top_items(top_aeropuertos_raw),
+        top_tipos_incidente=build_top_items(top_tipos_raw),
+        distribucion_riesgo=build_top_items(distribucion_riesgo_raw),
+        recomendaciones=recomendaciones,
+    )
 
 
 def train_predictive_model_from_db(db: Session) -> dict[str, Any]:
@@ -620,6 +724,15 @@ def model_metrics(_: Usuario = Depends(get_current_user)) -> ModelMetricsOut:
         samples_train=metrics.get("samples_train"),
         samples_test=metrics.get("samples_test"),
     )
+
+
+@app.get("/reports/executive", response_model=ExecutiveReportResponse)
+def executive_report(
+    periodo_dias: int = Query(default=90, ge=7, le=365),
+    _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
+    db: Session = Depends(get_db),
+) -> ExecutiveReportResponse:
+    return build_executive_report(db, periodo_dias)
 
 
 @app.get("/audit-logs", response_model=list[AuditLogOut])

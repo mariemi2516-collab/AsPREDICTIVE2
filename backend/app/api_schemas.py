@@ -193,3 +193,45 @@ class DashboardSummaryResponse(BaseModel):
     stats: DashboardStats
     recentIncidentes: list[IncidenteOut]
     alertas: list[AlertaOut]
+
+
+class ReportTopItem(BaseModel):
+    clave: str
+    total: int
+
+
+class ReportModelState(BaseModel):
+    version: str
+    registros_entrenamiento: int
+    accuracy: float | None = None
+
+
+class ReportOperationalSummary(BaseModel):
+    incidentes_periodo: int
+    alertas_pendientes: int
+    alertas_resueltas_periodo: int
+    usuarios_activos: int
+    aeropuertos_monitoreados: int
+    riesgo_promedio: int
+    riesgo_futuro: int
+
+
+class ReportTraceability(BaseModel):
+    incidentes_con_clima: int
+    incidentes_con_geolocalizacion: int
+    incidentes_auditados: int
+    acciones_auditadas_periodo: int
+
+
+class ExecutiveReportResponse(BaseModel):
+    generado_en: datetime
+    periodo_dias: int
+    organismo_referencia: str
+    marco_regulatorio: list[str]
+    estado_modelo: ReportModelState
+    resumen_operacional: ReportOperationalSummary
+    trazabilidad: ReportTraceability
+    top_aeropuertos: list[ReportTopItem]
+    top_tipos_incidente: list[ReportTopItem]
+    distribucion_riesgo: list[ReportTopItem]
+    recomendaciones: list[str]

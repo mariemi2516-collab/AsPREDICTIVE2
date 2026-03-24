@@ -49,6 +49,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `GET /dashboard/summary`
 - `POST /predict`
 - `POST /train`
+- `GET /model/metrics`
+- `GET /audit-logs`
+- `GET /reports/executive`
 
 ## 6. Usuario demo inicial
 

@@ -7,6 +7,7 @@ import type {
   FormCatalogs,
   Incidente,
   NivelRiesgo,
+  ReporteEjecutivo,
   RolUsuario,
   TipoIncidente,
   Usuario,
@@ -106,6 +107,10 @@ export const api = {
     descripcion: string;
     nivel_riesgo: NivelRiesgo;
     fase_vuelo: string;
+    condicion_meteorologica?: string | null;
+    condicion_luz?: string | null;
+    visibilidad_millas?: number | null;
+    viento_kt?: number | null;
     latitud: number | null;
     longitud: number | null;
   }) {
@@ -122,6 +127,10 @@ export const api = {
     descripcion: string;
     nivel_riesgo: NivelRiesgo;
     fase_vuelo: string;
+    condicion_meteorologica?: string | null;
+    condicion_luz?: string | null;
+    visibilidad_millas?: number | null;
+    viento_kt?: number | null;
     latitud: number | null;
     longitud: number | null;
   }) {
@@ -163,5 +172,8 @@ export const api = {
   },
   async listAeronaves() {
     return request<Aeronave[]>('/catalogs/aeronaves');
+  },
+  async getReporteEjecutivo(periodoDias = 90) {
+    return request<ReporteEjecutivo>(`/reports/executive?periodo_dias=${periodoDias}`);
   },
 };
