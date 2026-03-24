@@ -51,6 +51,7 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
   const [loading, setLoading] = useState(true);
   const [showAllInspections, setShowAllInspections] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [cleaning, setCleaning] = useState(false);
 
   const [templateName, setTemplateName] = useState('');
@@ -197,6 +198,26 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
     await loadInstitutionalData();
   }
 
+  async function handleMarkAllNotificationsRead() {
+    await api.markAllNotificationsRead();
+    await loadInstitutionalData();
+  }
+
+  async function handleExportRegulatoryPdf() {
+    try {
+      setExportingPdf(true);
+      const blob = await api.getRegulatoryExportPdf();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `reporte_regulatorio_${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
@@ -245,6 +266,13 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
           {exporting ? 'Generando reporte...' : 'Descargar reporte regulatorio'}
         </button>
         <button
+          onClick={handleExportRegulatoryPdf}
+          disabled={exportingPdf}
+          className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {exportingPdf ? 'Generando PDF...' : 'Descargar PDF'}
+        </button>
+        <button
           onClick={handleCleanupTestInspections}
           disabled={cleaning || inspections.length === 0}
           className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -254,6 +282,13 @@ export default function InstitutionalPanel({ onUpdate }: Props) {
         <p className="text-sm text-slate-500">
           Notificaciones activas: <span className="font-semibold text-slate-900">{notifications.filter((item) => item.estado !== 'Leida').length}</span>
         </p>
+        <button
+          onClick={handleMarkAllNotificationsRead}
+          disabled={!notifications.some((item) => item.estado !== 'Leida')}
+          className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Marcar todas como leidas
+        </button>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">

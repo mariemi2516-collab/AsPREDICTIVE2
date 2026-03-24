@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -99,7 +104,7 @@ def create_notification(
     destinatario_user_id: str | None = None,
     recurso_tipo: str | None = None,
     recurso_id: str | None = None,
-) -> None:
+    ) -> None:
     db.add(
         NotificationEvent(
             organization_key=organization_key,
@@ -112,6 +117,137 @@ def create_notification(
             recurso_id=recurso_id,
         )
     )
+
+
+def ensure_operational_notifications(db: Session, organization_key: str) -> None:
+    now = datetime.utcnow()
+
+    critical_inspections = list(
+        db.scalars(
+            select(Inspection).where(
+                Inspection.organization_key == organization_key,
+                Inspection.estado == "Pendiente",
+                Inspection.criticidad.in_(["Alta", "Critica", "Crítica"]),
+            )
+        )
+    )
+    for inspection in critical_inspections:
+        exists = db.scalar(
+            select(NotificationEvent.id).where(
+                NotificationEvent.organization_key == organization_key,
+                NotificationEvent.tipo == "inspection_attention",
+                NotificationEvent.recurso_tipo == "inspection",
+                NotificationEvent.recurso_id == str(inspection.id),
+            )
+        )
+        if not exists:
+            create_notification(
+                db,
+                organization_key=organization_key,
+                tipo="inspection_attention",
+                titulo="Inspeccion prioritaria pendiente",
+                mensaje=f"La inspeccion '{inspection.titulo}' sigue pendiente con criticidad {inspection.criticidad}.",
+                severidad=inspection.criticidad or "Alta",
+                destinatario_user_id=inspection.responsable_id,
+                recurso_tipo="inspection",
+                recurso_id=str(inspection.id),
+            )
+
+    overdue_actions = list(
+        db.scalars(
+            select(CorrectiveAction).where(
+                CorrectiveAction.organization_key == organization_key,
+                CorrectiveAction.estado != "Cerrada",
+                CorrectiveAction.fecha_vencimiento.is_not(None),
+                CorrectiveAction.fecha_vencimiento < now,
+            )
+        )
+    )
+    for action in overdue_actions:
+        exists = db.scalar(
+            select(NotificationEvent.id).where(
+                NotificationEvent.organization_key == organization_key,
+                NotificationEvent.tipo == "corrective_action_overdue",
+                NotificationEvent.recurso_tipo == "corrective_action",
+                NotificationEvent.recurso_id == str(action.id),
+            )
+        )
+        if not exists:
+            create_notification(
+                db,
+                organization_key=organization_key,
+                tipo="corrective_action_overdue",
+                titulo="Accion correctiva vencida",
+                mensaje=f"La accion '{action.titulo}' vencio y permanece en estado {action.estado}.",
+                severidad=action.prioridad,
+                destinatario_user_id=action.responsable_id,
+                recurso_tipo="corrective_action",
+                recurso_id=str(action.id),
+            )
+
+    overdue_training = list(
+        db.scalars(
+            select(TrainingRecord).where(
+                TrainingRecord.organization_key == organization_key,
+                TrainingRecord.estado != "Completado",
+                TrainingRecord.fecha_vencimiento.is_not(None),
+                TrainingRecord.fecha_vencimiento < now,
+            )
+        )
+    )
+    for record in overdue_training:
+        exists = db.scalar(
+            select(NotificationEvent.id).where(
+                NotificationEvent.organization_key == organization_key,
+                NotificationEvent.tipo == "training_overdue",
+                NotificationEvent.recurso_tipo == "training_record",
+                NotificationEvent.recurso_id == str(record.id),
+            )
+        )
+        if not exists:
+            create_notification(
+                db,
+                organization_key=organization_key,
+                tipo="training_overdue",
+                titulo="Capacitacion vencida",
+                mensaje=f"El registro de capacitacion {record.id} se encuentra vencido y sigue pendiente.",
+                severidad="Alta",
+                destinatario_user_id=record.user_id,
+                recurso_tipo="training_record",
+                recurso_id=str(record.id),
+            )
+
+    db.commit()
+
+
+def build_regulatory_lines(
+    organization_key: str,
+    inspections: list[Inspection],
+    actions: list[CorrectiveAction],
+    records: list[TrainingRecord],
+    notifications: list[NotificationEvent],
+) -> list[str]:
+    lines = [
+        "REPORTE REGULATORIO ASPREDICTIVE",
+        f"Organizacion: {organization_key}",
+        f"Generado: {datetime.utcnow().isoformat()}",
+        "",
+        "1. INSPECCIONES",
+    ]
+    lines.extend([f"- {item.titulo} | estado={item.estado} | criticidad={item.criticidad or 'N/D'}" for item in inspections] or ["- Sin registros"])
+    lines.append("")
+    lines.append("2. ACCIONES CORRECTIVAS")
+    lines.extend([f"- {item.titulo} | prioridad={item.prioridad} | estado={item.estado}" for item in actions] or ["- Sin registros"])
+    lines.append("")
+    lines.append("3. CAPACITACIONES")
+    lines.extend([f"- registro {item.id} | course_id={item.course_id} | estado={item.estado}" for item in records] or ["- Sin registros"])
+    lines.append("")
+    lines.append("4. NOTIFICACIONES")
+    lines.extend([f"- {item.titulo} | severidad={item.severidad} | estado={item.estado}" for item in notifications] or ["- Sin registros"])
+    lines.append("")
+    lines.append("5. TRAZABILIDAD")
+    lines.append("Este reporte puede utilizarse como base previa para exporte PDF institucional.")
+    return lines
 
 
 @router.get("/form-templates", response_model=list[FormTemplateOut])
@@ -575,6 +711,7 @@ def list_notifications(
     _: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[NotificationEventOut]:
+    ensure_operational_notifications(db, organization_key or "default")
     statement = select(NotificationEvent).order_by(NotificationEvent.created_at.desc()).limit(100)
     if organization_key:
         statement = statement.where(NotificationEvent.organization_key == organization_key)
@@ -606,6 +743,38 @@ def mark_notification_read(
     return notification
 
 
+@router.post("/notifications/read-all", response_model=BulkOperationResultOut)
+def mark_all_notifications_read(
+    organization_key: str = Query(default="default"),
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BulkOperationResultOut:
+    notifications = list(
+        db.scalars(
+            select(NotificationEvent).where(
+                NotificationEvent.organization_key == organization_key,
+                NotificationEvent.estado != "Leida",
+            )
+        )
+    )
+    for notification in notifications:
+        notification.estado = "Leida"
+        notification.read_at = datetime.utcnow()
+
+    write_audit_log(
+        db,
+        actor_user_id=current_user.id,
+        action="notificaciones_leidas_masivo",
+        resource_type="notification_event",
+        details={"organization_key": organization_key, "cantidad": len(notifications)},
+    )
+    db.commit()
+    return BulkOperationResultOut(
+        eliminados=len(notifications),
+        detalle="Notificaciones marcadas como leidas",
+    )
+
+
 @router.get("/exports/regulatory", response_model=RegulatoryExportOut)
 def export_regulatory_report(
     organization_key: str = Query(default="default"),
@@ -617,30 +786,53 @@ def export_regulatory_report(
     records = list(db.scalars(select(TrainingRecord).where(TrainingRecord.organization_key == organization_key).order_by(TrainingRecord.created_at.desc()).limit(10)))
     notifications = list(db.scalars(select(NotificationEvent).where(NotificationEvent.organization_key == organization_key).order_by(NotificationEvent.created_at.desc()).limit(10)))
 
-    lines = [
-        "REPORTE REGULATORIO ASPREDICTIVE",
-        f"Organizacion: {organization_key}",
-        f"Generado: {datetime.utcnow().isoformat()}",
-        "",
-        "1. INSPECCIONES",
-    ]
-    lines.extend([f"- {item.titulo} | estado={item.estado} | criticidad={item.criticidad or 'N/D'}" for item in inspections] or ["- Sin registros"])
-    lines.append("")
-    lines.append("2. ACCIONES CORRECTIVAS")
-    lines.extend([f"- {item.titulo} | prioridad={item.prioridad} | estado={item.estado}" for item in actions] or ["- Sin registros"])
-    lines.append("")
-    lines.append("3. CAPACITACIONES")
-    lines.extend([f"- registro {item.id} | course_id={item.course_id} | estado={item.estado}" for item in records] or ["- Sin registros"])
-    lines.append("")
-    lines.append("4. NOTIFICACIONES")
-    lines.extend([f"- {item.titulo} | severidad={item.severidad} | estado={item.estado}" for item in notifications] or ["- Sin registros"])
-    lines.append("")
-    lines.append("5. TRAZABILIDAD")
-    lines.append("Este reporte puede utilizarse como base previa para exporte PDF institucional.")
+    lines = build_regulatory_lines(organization_key, inspections, actions, records, notifications)
 
     return RegulatoryExportOut(
         generado_en=datetime.utcnow(),
         formato="txt",
         nombre_archivo=f"reporte_regulatorio_{organization_key}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.txt",
         contenido="\n".join(lines),
+    )
+
+
+@router.get("/exports/regulatory/pdf")
+def export_regulatory_report_pdf(
+    organization_key: str = Query(default="default"),
+    _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    inspections = list(db.scalars(select(Inspection).where(Inspection.organization_key == organization_key).order_by(Inspection.created_at.desc()).limit(10)))
+    actions = list(db.scalars(select(CorrectiveAction).where(CorrectiveAction.organization_key == organization_key).order_by(CorrectiveAction.created_at.desc()).limit(10)))
+    records = list(db.scalars(select(TrainingRecord).where(TrainingRecord.organization_key == organization_key).order_by(TrainingRecord.created_at.desc()).limit(10)))
+    notifications = list(db.scalars(select(NotificationEvent).where(NotificationEvent.organization_key == organization_key).order_by(NotificationEvent.created_at.desc()).limit(10)))
+    lines = build_regulatory_lines(organization_key, inspections, actions, records, notifications)
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    x = 20 * mm
+    y = height - 20 * mm
+
+    pdf.setTitle(f"Reporte regulatorio {organization_key}")
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(x, y, "AsPREDICTIVE - Reporte Regulatorio")
+    y -= 10 * mm
+    pdf.setFont("Helvetica", 9)
+
+    for line in lines:
+        if y < 20 * mm:
+            pdf.showPage()
+            y = height - 20 * mm
+            pdf.setFont("Helvetica", 9)
+        pdf.drawString(x, y, line[:120])
+        y -= 6 * mm
+
+    pdf.save()
+    buffer.seek(0)
+    filename = f"reporte_regulatorio_{organization_key}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

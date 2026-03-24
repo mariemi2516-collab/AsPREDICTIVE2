@@ -17,9 +17,22 @@ Definir una base operativa madura para evolucionar AsPREDICTIVE hacia un entorno
 - `GET /health`
 - `GET /model/metrics`
 - `GET /reports/executive`
+- `GET /institutional/notifications`
+- `GET /institutional/exports/regulatory`
+- `GET /institutional/exports/regulatory/pdf`
 - verificacion de backlog de alertas pendientes
 - verificacion de auditoria y acciones correctivas abiertas
+- verificacion de inspecciones pendientes con criticidad alta o critica
+- verificacion de capacitaciones vencidas
 - chequeo de jobs de backup
+
+## Soporte operativo sugerido
+
+- ventana de soporte de lunes a viernes en horario operativo
+- guardia pasiva para incidentes criticos de disponibilidad
+- registro de ticket, severidad, responsable y fecha de resolucion
+- runbook para login, API, base de datos, modelo y despliegue
+- revision semanal de alertas predictivas, auditorias y acciones vencidas
 
 ## Soporte minimo sugerido
 
@@ -39,18 +52,19 @@ Definir una base operativa madura para evolucionar AsPREDICTIVE hacia un entorno
 
 ### Notificaciones automaticas robustas
 
-- correo transaccional
-- alertas por umbral y vencimiento
+- recordatorios por inspecciones pendientes de alta criticidad
+- alertas por vencimiento de acciones correctivas
 - notificaciones de cursos vencidos
-- resumen operativo diario
+- marcado masivo de lectura
+- evolucion posterior a correo transaccional y resumen operativo diario
 
 ### Exportes regulatorios formales en PDF
 
-- reporte ejecutivo con membrete institucional
+- reporte regulatorio descargable en texto y PDF
 - estado del modelo
-- top riesgos
 - auditorias e inspecciones
 - acciones correctivas
+- base para version con membrete institucional y firma
 
 ### Hardening adicional
 

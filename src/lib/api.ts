@@ -70,6 +70,26 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return response.json() as Promise<T>;
 }
 
+async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    headers: buildHeaders(options.headers, options.auth !== false),
+  });
+
+  if (!response.ok) {
+    let message = 'Error inesperado en la API';
+    try {
+      const errorBody = await response.json();
+      message = errorBody.detail || errorBody.message || message;
+    } catch {
+      message = response.statusText || message;
+    }
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
+
 export const api = {
   getBaseUrl() {
     return apiBaseUrl;
@@ -311,7 +331,16 @@ export const api = {
       body: JSON.stringify({ estado }),
     });
   },
+  async markAllNotificationsRead(organizationKey = 'default') {
+    return request<ResultadoOperacionMasiva>(`/institutional/notifications/read-all?organization_key=${organizationKey}`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
   async getRegulatoryExport(organizationKey = 'default') {
     return request<ExporteRegulatorio>(`/institutional/exports/regulatory?organization_key=${organizationKey}`);
+  },
+  async getRegulatoryExportPdf(organizationKey = 'default') {
+    return requestBlob(`/institutional/exports/regulatory/pdf?organization_key=${organizationKey}`);
   },
 };
