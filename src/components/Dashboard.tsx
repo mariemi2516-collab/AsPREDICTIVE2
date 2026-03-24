@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import IncidentesTable from './IncidentesTable';
 import AlertasPanel from './AlertasPanel';
+import InstitutionalPanel from './InstitutionalPanel';
 import { api } from '../lib/api';
 import type { Alerta, Incidente } from '../lib/types';
 import { getPrediccionRiesgo, type PredictiveResult } from '../services/predictiveService';
@@ -267,6 +268,10 @@ async function loadDashboardData() {
         </div>
 
         <IncidentesTable onUpdate={loadDashboardData} />
+
+        <div className="mt-8">
+          <InstitutionalPanel onUpdate={loadDashboardData} />
+        </div>
 
       </div>
     </div>

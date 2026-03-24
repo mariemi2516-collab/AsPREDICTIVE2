@@ -140,3 +140,82 @@ export interface ReporteEjecutivo {
   distribucion_riesgo: ReporteTopItem[];
   recomendaciones: string[];
 }
+
+export interface FormTemplateField {
+  id: number;
+  clave: string;
+  etiqueta: string;
+  tipo_campo: string;
+  requerido: boolean;
+  opciones: string[];
+  orden: number;
+}
+
+export interface FormTemplate {
+  id: number;
+  organization_key: string;
+  nombre: string;
+  modulo: string;
+  version: number;
+  estado: string;
+  created_by: string | null;
+  created_at: string;
+  fields: FormTemplateField[];
+}
+
+export interface Inspeccion {
+  id: number;
+  organization_key: string;
+  template_id: number | null;
+  aeropuerto_id: number | null;
+  titulo: string;
+  alcance: string | null;
+  estado: string;
+  criticidad: string | null;
+  fecha_programada: string | null;
+  fecha_ejecucion: string | null;
+  responsable_id: string | null;
+  observaciones: string | null;
+  created_at: string;
+}
+
+export interface AccionCorrectiva {
+  id: number;
+  organization_key: string;
+  inspection_id: number | null;
+  incidente_id: number | null;
+  titulo: string;
+  descripcion: string | null;
+  prioridad: string;
+  estado: string;
+  fecha_vencimiento: string | null;
+  responsable_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CursoCapacitacion {
+  id: number;
+  organization_key: string;
+  nombre: string;
+  categoria: string | null;
+  modalidad: string | null;
+  vigencia_meses: number | null;
+  obligatorio_para: string[];
+  estado: string;
+  created_at: string;
+}
+
+export interface RegistroCapacitacion {
+  id: number;
+  course_id: number;
+  user_id: string | null;
+  organization_key: string;
+  estado: string;
+  fecha_asignacion: string;
+  fecha_completado: string | null;
+  fecha_vencimiento: string | null;
+  puntaje: number | null;
+  observaciones: string | null;
+  created_at: string;
+}

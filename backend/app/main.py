@@ -33,6 +33,8 @@ from .api_schemas import (
 )
 from .config import settings
 from .db import Base, engine, get_db
+from . import institutional_models  # noqa: F401
+from .institutional_router import router as institutional_router
 from .model_service import RiskPredictor, bootstrap_bundle, combine_training_rows, load_jst_training_rows, load_ntsb_training_rows, save_bundle, train_bundle
 from .models import Aeronave, Aeropuerto, Alerta, AuditLog, Incidente, PasswordResetToken, TipoIncidente, Usuario
 from .observability import cleanup_expired_password_resets, log_request_event, logger, write_audit_log
@@ -51,6 +53,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(institutional_router)
 
 
 @app.middleware("http")

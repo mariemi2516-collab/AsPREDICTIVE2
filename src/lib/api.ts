@@ -6,8 +6,13 @@ import type {
   DashboardSummary,
   FormCatalogs,
   Incidente,
+  Inspeccion,
   NivelRiesgo,
   ReporteEjecutivo,
+  AccionCorrectiva,
+  CursoCapacitacion,
+  FormTemplate,
+  RegistroCapacitacion,
   RolUsuario,
   TipoIncidente,
   Usuario,
@@ -175,5 +180,110 @@ export const api = {
   },
   async getReporteEjecutivo(periodoDias = 90) {
     return request<ReporteEjecutivo>(`/reports/executive?periodo_dias=${periodoDias}`);
+  },
+  async listFormTemplates(organizationKey = 'default') {
+    return request<FormTemplate[]>(`/institutional/form-templates?organization_key=${organizationKey}`);
+  },
+  async createFormTemplate(payload: {
+    organization_key: string;
+    nombre: string;
+    modulo: string;
+    version?: number;
+    estado?: string;
+    fields?: Array<{
+      clave: string;
+      etiqueta: string;
+      tipo_campo: string;
+      requerido?: boolean;
+      opciones?: string[];
+      orden?: number;
+    }>;
+  }) {
+    return request<FormTemplate>('/institutional/form-templates', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async listInspections(organizationKey = 'default') {
+    return request<Inspeccion[]>(`/institutional/inspections?organization_key=${organizationKey}`);
+  },
+  async createInspection(payload: {
+    organization_key: string;
+    template_id?: number | null;
+    aeropuerto_id?: number | null;
+    titulo: string;
+    alcance?: string | null;
+    estado?: string;
+    criticidad?: string | null;
+    fecha_programada?: string | null;
+    observaciones?: string | null;
+  }) {
+    return request<Inspeccion>('/institutional/inspections', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async listCorrectiveActions(organizationKey = 'default') {
+    return request<AccionCorrectiva[]>(`/institutional/corrective-actions?organization_key=${organizationKey}`);
+  },
+  async createCorrectiveAction(payload: {
+    organization_key: string;
+    inspection_id?: number | null;
+    incidente_id?: number | null;
+    titulo: string;
+    descripcion?: string | null;
+    prioridad?: string;
+    estado?: string;
+    fecha_vencimiento?: string | null;
+  }) {
+    return request<AccionCorrectiva>('/institutional/corrective-actions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async updateCorrectiveActionStatus(actionId: number, estado: string) {
+    return request<AccionCorrectiva>(`/institutional/corrective-actions/${actionId}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ estado }),
+    });
+  },
+  async listTrainingCourses(organizationKey = 'default') {
+    return request<CursoCapacitacion[]>(`/institutional/training/courses?organization_key=${organizationKey}`);
+  },
+  async createTrainingCourse(payload: {
+    organization_key: string;
+    nombre: string;
+    categoria?: string | null;
+    modalidad?: string | null;
+    vigencia_meses?: number | null;
+    obligatorio_para?: string[];
+    estado?: string;
+  }) {
+    return request<CursoCapacitacion>('/institutional/training/courses', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async listTrainingRecords(organizationKey = 'default') {
+    return request<RegistroCapacitacion[]>(`/institutional/training/records?organization_key=${organizationKey}`);
+  },
+  async createTrainingRecord(payload: {
+    organization_key: string;
+    course_id: number;
+    user_id?: string | null;
+    estado?: string;
+    fecha_vencimiento?: string | null;
+    observaciones?: string | null;
+  }) {
+    return request<RegistroCapacitacion>('/institutional/training/records', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  async completeTrainingRecord(recordId: number, puntaje?: number | null, observaciones?: string | null) {
+    return request<RegistroCapacitacion>(`/institutional/training/records/${recordId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ puntaje, observaciones }),
+    });
   },
 };
