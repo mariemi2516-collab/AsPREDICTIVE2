@@ -100,3 +100,23 @@ class TrainingRecord(Base):
     puntaje: Mapped[float | None] = mapped_column(Float, nullable=True)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class NotificationEvent(Base):
+    __tablename__ = "notification_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    organization_key: Mapped[str] = mapped_column(String(100), index=True, default="default")
+    canal: Mapped[str] = mapped_column(String(30), index=True, default="in_app")
+    tipo: Mapped[str] = mapped_column(String(100), index=True)
+    titulo: Mapped[str] = mapped_column(String(200))
+    mensaje: Mapped[str] = mapped_column(Text)
+    severidad: Mapped[str] = mapped_column(String(20), default="Media", index=True)
+    estado: Mapped[str] = mapped_column(String(20), default="Pendiente", index=True)
+    destinatario_user_id: Mapped[str | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True, index=True)
+    recurso_tipo: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    recurso_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

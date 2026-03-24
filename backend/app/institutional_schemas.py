@@ -151,3 +151,31 @@ class TrainingRecordOut(BaseModel):
     puntaje: float | None = None
     observaciones: str | None = None
     created_at: datetime
+
+
+class NotificationEventOut(BaseModel):
+    id: int
+    organization_key: str
+    canal: str
+    tipo: str
+    titulo: str
+    mensaje: str
+    severidad: str
+    estado: str
+    destinatario_user_id: str | None = None
+    recurso_tipo: str | None = None
+    recurso_id: str | None = None
+    sent_at: datetime | None = None
+    read_at: datetime | None = None
+    created_at: datetime
+
+
+class NotificationReadPayload(BaseModel):
+    estado: str = "Leida"
+
+
+class RegulatoryExportOut(BaseModel):
+    generado_en: datetime
+    formato: str
+    nombre_archivo: str
+    contenido: str

@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .db import get_db
-from .institutional_models import CorrectiveAction, FormTemplate, FormTemplateField, Inspection, TrainingCourse, TrainingRecord
+from .institutional_models import CorrectiveAction, FormTemplate, FormTemplateField, Inspection, NotificationEvent, TrainingCourse, TrainingRecord
 from .institutional_schemas import (
     CorrectiveActionOut,
     CorrectiveActionPayload,
@@ -17,6 +17,9 @@ from .institutional_schemas import (
     FormTemplatePayload,
     InspectionOut,
     InspectionPayload,
+    NotificationEventOut,
+    NotificationReadPayload,
+    RegulatoryExportOut,
     TrainingCourseOut,
     TrainingCoursePayload,
     TrainingRecordCompletePayload,
@@ -82,6 +85,31 @@ def to_template_out(template: FormTemplate, fields: list[FormTemplateField]) -> 
             }
             for field in sorted_fields
         ],
+    )
+
+
+def create_notification(
+    db: Session,
+    organization_key: str,
+    tipo: str,
+    titulo: str,
+    mensaje: str,
+    severidad: str = "Media",
+    destinatario_user_id: str | None = None,
+    recurso_tipo: str | None = None,
+    recurso_id: str | None = None,
+) -> None:
+    db.add(
+        NotificationEvent(
+            organization_key=organization_key,
+            tipo=tipo,
+            titulo=titulo,
+            mensaje=mensaje,
+            severidad=severidad,
+            destinatario_user_id=destinatario_user_id,
+            recurso_tipo=recurso_tipo,
+            recurso_id=recurso_id,
+        )
     )
 
 
@@ -176,6 +204,16 @@ def create_inspection(
         responsable_id=current_user.id,
     )
     db.add(inspection)
+    create_notification(
+        db,
+        organization_key=payload.organization_key,
+        tipo="inspection_created",
+        titulo="Nueva inspeccion programada",
+        mensaje=f"Se registro la inspeccion '{payload.titulo}' con estado {payload.estado}.",
+        severidad=payload.criticidad or "Media",
+        destinatario_user_id=current_user.id,
+        recurso_tipo="inspection",
+    )
     write_audit_log(
         db,
         actor_user_id=current_user.id,
@@ -219,6 +257,16 @@ def create_corrective_action(
         responsable_id=current_user.id,
     )
     db.add(action)
+    create_notification(
+        db,
+        organization_key=payload.organization_key,
+        tipo="corrective_action_created",
+        titulo="Nueva accion correctiva",
+        mensaje=f"Se creo la accion correctiva '{payload.titulo}' con prioridad {payload.prioridad}.",
+        severidad=payload.prioridad,
+        destinatario_user_id=current_user.id,
+        recurso_tipo="corrective_action",
+    )
     write_audit_log(
         db,
         actor_user_id=current_user.id,
@@ -243,6 +291,17 @@ def update_corrective_action_status(
         raise HTTPException(status_code=404, detail="Accion correctiva no encontrada")
     action.estado = payload.estado
     action.updated_at = datetime.utcnow()
+    create_notification(
+        db,
+        organization_key=action.organization_key,
+        tipo="corrective_action_updated",
+        titulo="Accion correctiva actualizada",
+        mensaje=f"La accion '{action.titulo}' cambio a estado {payload.estado}.",
+        severidad=action.prioridad,
+        destinatario_user_id=current_user.id,
+        recurso_tipo="corrective_action",
+        recurso_id=str(action_id),
+    )
     write_audit_log(
         db,
         actor_user_id=current_user.id,
@@ -298,6 +357,16 @@ def create_training_course(
         estado=payload.estado,
     )
     db.add(course)
+    create_notification(
+        db,
+        organization_key=payload.organization_key,
+        tipo="training_course_created",
+        titulo="Nuevo curso disponible",
+        mensaje=f"Se creo el curso '{payload.nombre}' para gestion institucional.",
+        severidad="Baja",
+        destinatario_user_id=current_user.id,
+        recurso_tipo="training_course",
+    )
     write_audit_log(
         db,
         actor_user_id=current_user.id,
@@ -347,6 +416,16 @@ def create_training_record(
         observaciones=payload.observaciones,
     )
     db.add(record)
+    create_notification(
+        db,
+        organization_key=payload.organization_key,
+        tipo="training_assigned",
+        titulo="Capacitacion asignada",
+        mensaje=f"Se asigno el curso {payload.course_id} con estado {payload.estado}.",
+        severidad="Media",
+        destinatario_user_id=payload.user_id or current_user.id,
+        recurso_tipo="training_record",
+    )
     write_audit_log(
         db,
         actor_user_id=current_user.id,
@@ -373,6 +452,17 @@ def complete_training_record(
     record.fecha_completado = datetime.utcnow()
     record.puntaje = payload.puntaje
     record.observaciones = payload.observaciones
+    create_notification(
+        db,
+        organization_key=record.organization_key,
+        tipo="training_completed",
+        titulo="Capacitacion completada",
+        mensaje=f"El registro de capacitacion {record.id} fue completado.",
+        severidad="Baja",
+        destinatario_user_id=current_user.id,
+        recurso_tipo="training_record",
+        recurso_id=str(record_id),
+    )
     write_audit_log(
         db,
         actor_user_id=current_user.id,
@@ -384,3 +474,80 @@ def complete_training_record(
     db.commit()
     db.refresh(record)
     return record
+
+
+@router.get("/notifications", response_model=list[NotificationEventOut])
+def list_notifications(
+    organization_key: str | None = Query(default=None),
+    _: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[NotificationEventOut]:
+    statement = select(NotificationEvent).order_by(NotificationEvent.created_at.desc()).limit(100)
+    if organization_key:
+        statement = statement.where(NotificationEvent.organization_key == organization_key)
+    return list(db.scalars(statement))
+
+
+@router.post("/notifications/{notification_id}/read", response_model=NotificationEventOut)
+def mark_notification_read(
+    notification_id: int,
+    payload: NotificationReadPayload,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> NotificationEventOut:
+    notification = db.get(NotificationEvent, notification_id)
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notificacion no encontrada")
+    notification.estado = payload.estado
+    notification.read_at = datetime.utcnow()
+    write_audit_log(
+        db,
+        actor_user_id=current_user.id,
+        action="notificacion_leida",
+        resource_type="notification_event",
+        resource_id=str(notification_id),
+        details={"estado": payload.estado},
+    )
+    db.commit()
+    db.refresh(notification)
+    return notification
+
+
+@router.get("/exports/regulatory", response_model=RegulatoryExportOut)
+def export_regulatory_report(
+    organization_key: str = Query(default="default"),
+    _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
+    db: Session = Depends(get_db),
+) -> RegulatoryExportOut:
+    inspections = list(db.scalars(select(Inspection).where(Inspection.organization_key == organization_key).order_by(Inspection.created_at.desc()).limit(10)))
+    actions = list(db.scalars(select(CorrectiveAction).where(CorrectiveAction.organization_key == organization_key).order_by(CorrectiveAction.created_at.desc()).limit(10)))
+    records = list(db.scalars(select(TrainingRecord).where(TrainingRecord.organization_key == organization_key).order_by(TrainingRecord.created_at.desc()).limit(10)))
+    notifications = list(db.scalars(select(NotificationEvent).where(NotificationEvent.organization_key == organization_key).order_by(NotificationEvent.created_at.desc()).limit(10)))
+
+    lines = [
+        "REPORTE REGULATORIO ASPREDICTIVE",
+        f"Organizacion: {organization_key}",
+        f"Generado: {datetime.utcnow().isoformat()}",
+        "",
+        "1. INSPECCIONES",
+    ]
+    lines.extend([f"- {item.titulo} | estado={item.estado} | criticidad={item.criticidad or 'N/D'}" for item in inspections] or ["- Sin registros"])
+    lines.append("")
+    lines.append("2. ACCIONES CORRECTIVAS")
+    lines.extend([f"- {item.titulo} | prioridad={item.prioridad} | estado={item.estado}" for item in actions] or ["- Sin registros"])
+    lines.append("")
+    lines.append("3. CAPACITACIONES")
+    lines.extend([f"- registro {item.id} | course_id={item.course_id} | estado={item.estado}" for item in records] or ["- Sin registros"])
+    lines.append("")
+    lines.append("4. NOTIFICACIONES")
+    lines.extend([f"- {item.titulo} | severidad={item.severidad} | estado={item.estado}" for item in notifications] or ["- Sin registros"])
+    lines.append("")
+    lines.append("5. TRAZABILIDAD")
+    lines.append("Este reporte puede utilizarse como base previa para exporte PDF institucional.")
+
+    return RegulatoryExportOut(
+        generado_en=datetime.utcnow(),
+        formato="txt",
+        nombre_archivo=f"reporte_regulatorio_{organization_key}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.txt",
+        contenido="\n".join(lines),
+    )
