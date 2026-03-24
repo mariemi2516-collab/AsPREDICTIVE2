@@ -1,0 +1,18 @@
+{
+  "name": "AsPREDICTIVE Seguridad Operacional",
+  "short_name": "AsPREDICTIVE",
+  "description": "Plataforma predictiva para incidentes, alertas y gestion operacional aeronáutica.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eff6ff",
+  "theme_color": "#0f172a",
+  "lang": "es-AR",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

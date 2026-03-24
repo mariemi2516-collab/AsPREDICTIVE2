@@ -20,6 +20,7 @@ import type {
   TipoIncidente,
   Usuario,
 } from './types';
+import { enqueueOfflineMutation, getOfflineQueue, getOfflineQueueSize, removeOfflineMutation } from './offlineQueue';
 
 const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 const TOKEN_KEY = 'aviation_auth_token';
@@ -101,6 +102,28 @@ export const api = {
     localStorage.removeItem(TOKEN_KEY);
   },
   getToken,
+  getOfflineQueueSize,
+  async syncOfflineQueue() {
+    if (!navigator.onLine) return { procesadas: 0, pendientes: getOfflineQueueSize() };
+
+    let procesadas = 0;
+    for (const mutation of getOfflineQueue()) {
+      const response = await fetch(`${apiBaseUrl}${mutation.path}`, {
+        method: mutation.method,
+        headers: buildHeaders(undefined, true),
+        body: mutation.body,
+      });
+
+      if (!response.ok) {
+        break;
+      }
+
+      removeOfflineMutation(mutation.id);
+      procesadas += 1;
+    }
+
+    return { procesadas, pendientes: getOfflineQueueSize() };
+  },
   async signIn(email: string, password: string) {
     return request<{ access_token: string; user: Usuario }>('/auth/login', {
       method: 'POST',
@@ -142,6 +165,15 @@ export const api = {
     latitud: number | null;
     longitud: number | null;
   }) {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'POST',
+        path: '/incidentes',
+        body: JSON.stringify(payload),
+        label: 'Crear incidente',
+      });
+      return { id: -Date.now(), ...payload, created_at: new Date().toISOString() } as unknown as Incidente;
+    }
     return request<Incidente>('/incidentes', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -162,6 +194,15 @@ export const api = {
     latitud: number | null;
     longitud: number | null;
   }) {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'PUT',
+        path: `/incidentes/${id}`,
+        body: JSON.stringify(payload),
+        label: 'Actualizar incidente',
+      });
+      return { id, ...payload, created_at: new Date().toISOString() } as unknown as Incidente;
+    }
     return request<Incidente>(`/incidentes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
@@ -184,6 +225,15 @@ export const api = {
     });
   },
   async resolveAlerta(alertaId: number) {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'POST',
+        path: `/alertas/${alertaId}/resolve`,
+        body: JSON.stringify({}),
+        label: 'Resolver alerta',
+      });
+      return { id: alertaId, estado: 'Pendiente' } as unknown as Alerta;
+    }
     return request<Alerta>(`/alertas/${alertaId}/resolve`, {
       method: 'POST',
       body: JSON.stringify({}),
@@ -241,17 +291,42 @@ export const api = {
     fecha_programada?: string | null;
     observaciones?: string | null;
   }) {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'POST',
+        path: '/institutional/inspections',
+        body: JSON.stringify(payload),
+        label: 'Crear inspeccion',
+      });
+      return { id: -Date.now(), ...payload, created_at: new Date().toISOString() } as unknown as Inspeccion;
+    }
     return request<Inspeccion>('/institutional/inspections', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
   async deleteInspection(inspectionId: number) {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'DELETE',
+        path: `/institutional/inspections/${inspectionId}`,
+        label: 'Eliminar inspeccion',
+      });
+      return undefined;
+    }
     return request<void>(`/institutional/inspections/${inspectionId}`, {
       method: 'DELETE',
     });
   },
   async deleteTestInspections(title = 'auditoria', organizationKey = 'default') {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'DELETE',
+        path: `/institutional/inspections?organization_key=${organizationKey}&title=${encodeURIComponent(title)}&only_pending=true`,
+        label: 'Eliminar inspecciones de prueba',
+      });
+      return { eliminados: 0, detalle: 'Operacion encolada para sincronizacion' };
+    }
     return request<ResultadoOperacionMasiva>(
       `/institutional/inspections?organization_key=${organizationKey}&title=${encodeURIComponent(title)}&only_pending=true`,
       {
@@ -272,12 +347,30 @@ export const api = {
     estado?: string;
     fecha_vencimiento?: string | null;
   }) {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'POST',
+        path: '/institutional/corrective-actions',
+        body: JSON.stringify(payload),
+        label: 'Crear accion correctiva',
+      });
+      return { id: -Date.now(), ...payload, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as unknown as AccionCorrectiva;
+    }
     return request<AccionCorrectiva>('/institutional/corrective-actions', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
   async updateCorrectiveActionStatus(actionId: number, estado: string) {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'POST',
+        path: `/institutional/corrective-actions/${actionId}/status`,
+        body: JSON.stringify({ estado }),
+        label: 'Actualizar accion correctiva',
+      });
+      return { id: actionId, estado } as unknown as AccionCorrectiva;
+    }
     return request<AccionCorrectiva>(`/institutional/corrective-actions/${actionId}/status`, {
       method: 'POST',
       body: JSON.stringify({ estado }),
@@ -326,12 +419,30 @@ export const api = {
     return request<NotificacionOperativa[]>(`/institutional/notifications?organization_key=${organizationKey}`);
   },
   async markNotificationRead(notificationId: number, estado = 'Leida') {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'POST',
+        path: `/institutional/notifications/${notificationId}/read`,
+        body: JSON.stringify({ estado }),
+        label: 'Marcar notificacion leida',
+      });
+      return { id: notificationId, estado } as unknown as NotificacionOperativa;
+    }
     return request<NotificacionOperativa>(`/institutional/notifications/${notificationId}/read`, {
       method: 'POST',
       body: JSON.stringify({ estado }),
     });
   },
   async markAllNotificationsRead(organizationKey = 'default') {
+    if (!navigator.onLine) {
+      enqueueOfflineMutation({
+        method: 'POST',
+        path: `/institutional/notifications/read-all?organization_key=${organizationKey}`,
+        body: JSON.stringify({}),
+        label: 'Marcar notificaciones leidas',
+      });
+      return { eliminados: 0, detalle: 'Operacion encolada para sincronizacion' };
+    }
     return request<ResultadoOperacionMasiva>(`/institutional/notifications/read-all?organization_key=${organizationKey}`, {
       method: 'POST',
       body: JSON.stringify({}),

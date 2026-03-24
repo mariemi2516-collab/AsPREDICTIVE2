@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import OfflineStatus from './components/OfflineStatus';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -22,6 +23,7 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
+      <OfflineStatus />
       <AppContent />
     </AuthProvider>
   );
