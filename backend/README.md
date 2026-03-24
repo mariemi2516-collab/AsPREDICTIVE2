@@ -65,3 +65,27 @@ En el `.env` del frontend:
 VITE_API_URL=http://localhost:8000
 VITE_PREDICTIVE_API_URL=http://localhost:8000
 ```
+
+## 8. Deploy en Render
+
+El repo ya incluye [render.yaml](/C:/Users/Hugo%20Celis/OneDrive/Escritorio/AsPREDICTIVE/render.yaml) para crear el Web Service automáticamente.
+
+Campos ya preparados:
+
+- `rootDir=backend`
+- `buildCommand=pip install -r requirements.txt`
+- `startCommand=uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- `healthCheckPath=/health`
+
+Variables esperadas:
+
+- `DATABASE_URL`:
+  Debes cargar aquí la URL de Neon.
+- `SECRET_KEY`:
+  Render la genera automáticamente.
+- `ACCESS_TOKEN_EXPIRE_MINUTES=720`
+
+Una vez desplegado, usa esa URL en Netlify:
+
+- `VITE_API_URL=https://tu-servicio.onrender.com`
+- `VITE_PREDICTIVE_API_URL=https://tu-servicio.onrender.com`
