@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import IncidenteModal from './IncidenteModal';
 import { api } from '../lib/api';
+import { formatCoordinates, formatDateTime, formatWeatherSummary, summarizeDescription } from '../lib/presentation';
 import type { Incidente } from '../lib/types';
 
 interface Props {
@@ -129,13 +130,13 @@ export default function IncidentesTable({ onUpdate }: Props) {
                   Fecha/Hora
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Aeropuerto
+                  Operacion
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Tipo
+                  Resumen operacional
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Aeronave
+                  Condiciones
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Riesgo
@@ -153,29 +154,33 @@ export default function IncidentesTable({ onUpdate }: Props) {
                   className="hover:bg-gray-50 cursor-pointer transition"
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(incidente.fecha_hora).toLocaleString('es-ES', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {formatDateTime(incidente.fecha_hora)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
-                        {incidente.aeropuertos?.nombre || 'N/A'}
+                        {incidente.aeropuertos?.nombre || 'Aeropuerto no informado'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {incidente.aeropuertos?.codigo_icao || ''}
+                        {incidente.tipos_incidente?.nombre || 'Tipo sin especificar'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {incidente.aeronaves?.matricula || 'Aeronave no informada'}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {incidente.tipos_incidente?.nombre || 'Sin especificar'}
+                    <p className="max-w-md leading-6 text-gray-900">
+                      {summarizeDescription(incidente.descripcion)}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Coordenadas: {formatCoordinates(incidente.latitud, incidente.longitud)}
+                    </p>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {incidente.aeronaves?.matricula || 'N/A'}
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <p className="max-w-xs leading-6 text-gray-700">
+                      {formatWeatherSummary(incidente)}
+                    </p>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getRiesgoColor(incidente.nivel_riesgo)}`}>

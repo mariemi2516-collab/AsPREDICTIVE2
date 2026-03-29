@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any
+import warnings
 
 import joblib
 import numpy as np
@@ -13,11 +14,12 @@ import pandas as pd
 from scipy import sparse
 from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
+from sklearn.exceptions import ConvergenceWarning
 
 from .schemas import IncidentePayload, NivelRiesgo
 
@@ -34,6 +36,7 @@ JST_EVENT_CODE_MAPPING_PATH = PROJECT_ROOT / "data" / "processed" / "jst_event_c
 JST_EVENT_CODE_AUDIT_PATH = PROJECT_ROOT / "data" / "processed" / "jst_event_code_audit.csv"
 RISK_ORDER: list[NivelRiesgo] = ["Bajo", "Medio", "Alto", "Crítico"]
 RISK_WEIGHTS = np.array([25.0, 50.0, 75.0, 100.0])
+MAX_SYNCHRONOUS_TRAINING_ROWS = 4000
 
 
 def _normalize_text(value: str | None) -> str:
@@ -384,7 +387,7 @@ def create_training_rows() -> list[dict[str, Any]]:
 def create_model_pipeline() -> Pipeline:
     preprocessor = ColumnTransformer(
         transformers=[
-            ("descripcion", TfidfVectorizer(max_features=150, ngram_range=(1, 2)), "descripcion"),
+            ("descripcion", TfidfVectorizer(max_features=100, ngram_range=(1, 2)), "descripcion"),
             (
                 "categorical",
                 OneHotEncoder(handle_unknown="ignore"),
@@ -427,16 +430,40 @@ def create_model_pipeline() -> Pipeline:
             ("preprocessor", preprocessor),
             (
                 "classifier",
-                LogisticRegression(
-                    solver="saga",
-                    max_iter=400,
+                SGDClassifier(
+                    loss="log_loss",
+                    max_iter=1000,
                     tol=1e-3,
+                    early_stopping=True,
+                    validation_fraction=0.1,
+                    n_iter_no_change=5,
                     class_weight="balanced",
                     random_state=42,
                 ),
             ),
         ]
     )
+
+
+def sample_training_rows(rows: list[dict[str, Any]], limit: int = MAX_SYNCHRONOUS_TRAINING_ROWS) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if len(rows) <= limit:
+        return rows, {"applied": False, "original_rows": len(rows), "sampled_rows": len(rows)}
+
+    frame = pd.DataFrame(rows)
+    sample_frame, _ = train_test_split(
+        frame,
+        train_size=limit,
+        random_state=42,
+        stratify=frame["nivel_riesgo"],
+    )
+    sampled_rows = sample_frame.to_dict(orient="records")
+    return sampled_rows, {
+        "applied": True,
+        "original_rows": len(rows),
+        "sampled_rows": len(sampled_rows),
+        "strategy": "stratified_random_sample",
+        "limit": limit,
+    }
 
 
 def load_ntsb_training_rows(path: Path = NTSB_TRAINING_PATH) -> list[dict[str, Any]]:
@@ -551,9 +578,11 @@ def train_bundle(
     source_name: str,
     traceability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    training_rows = [row for row in rows if row.get("nivel_riesgo") in RISK_ORDER]
-    if len(training_rows) < 12:
+    labeled_rows = [row for row in rows if row.get("nivel_riesgo") in RISK_ORDER]
+    if len(labeled_rows) < 12:
         raise ValueError("Se requieren al menos 12 registros etiquetados para entrenar el modelo.")
+
+    training_rows, sampling_info = sample_training_rows(labeled_rows)
 
     frame = build_feature_frame(training_rows)
     target = [row["nivel_riesgo"] for row in training_rows]
@@ -566,23 +595,30 @@ def train_bundle(
         random_state=42,
         stratify=target,
     )
-    pipeline.fit(x_train, y_train)
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", ConvergenceWarning)
+        pipeline.fit(x_train, y_train)
     predictions = pipeline.predict(x_test)
     accuracy = float(accuracy_score(y_test, predictions))
     report = classification_report(y_test, predictions, output_dict=True, zero_division=0)
+    convergence_warnings = [str(item.message) for item in caught_warnings if issubclass(item.category, ConvergenceWarning)]
+    traceability_payload = traceability or build_training_trace(labeled_rows, source_name=source_name)
+    traceability_payload["sampling"] = sampling_info
 
     return {
         "pipeline": pipeline,
         "risk_order": RISK_ORDER,
         "risk_weights": RISK_WEIGHTS.tolist(),
-        "model_version": f"logreg-multiclass-{source_name}",
+        "model_version": f"sgd-logloss-{source_name}",
         "training_rows": len(training_rows),
-        "traceability": traceability or build_training_trace(training_rows, source_name=source_name),
+        "traceability": traceability_payload,
         "metrics": {
             "accuracy": accuracy,
             "samples_train": len(x_train),
             "samples_test": len(x_test),
             "classification_report": report,
+            "converged": not convergence_warnings,
+            "warnings": convergence_warnings,
         },
     }
 
@@ -656,7 +692,7 @@ class RiskPredictor:
     def predict(self, payload: IncidentePayload) -> PredictionResult:
         row = build_feature_frame([payload.model_dump()])
         pipeline: Pipeline = self.bundle["pipeline"]
-        classifier: LogisticRegression = pipeline.named_steps["classifier"]
+        classifier: SGDClassifier = pipeline.named_steps["classifier"]
         probabilities = pipeline.predict_proba(row)[0]
         class_weights = np.array(
             [self._risk_weight_for_label(str(label)) for label in classifier.classes_],
@@ -694,7 +730,7 @@ class RiskPredictor:
     def _explain_prediction(self, row: pd.DataFrame, probabilities: np.ndarray) -> list[str]:
         pipeline: Pipeline = self.bundle["pipeline"]
         preprocessor: ColumnTransformer = pipeline.named_steps["preprocessor"]
-        classifier: LogisticRegression = pipeline.named_steps["classifier"]
+        classifier: SGDClassifier = pipeline.named_steps["classifier"]
         transformed = preprocessor.transform(row)
         if not sparse.issparse(transformed):
             transformed = sparse.csr_matrix(transformed)

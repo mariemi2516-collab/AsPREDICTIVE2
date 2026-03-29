@@ -102,6 +102,7 @@ class Incidente(Base):
     viento_kt: Mapped[float | None] = mapped_column(Float, nullable=True)
     latitud: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitud: Mapped[float | None] = mapped_column(Float, nullable=True)
+    organization_key: Mapped[str] = mapped_column(String(100), default="default", index=True)
     reportado_por: Mapped[str | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -121,6 +122,7 @@ class Alerta(Base):
     mensaje: Mapped[str | None] = mapped_column(Text, nullable=True)
     score_predictivo: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     ejecucion_agente_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    organization_key: Mapped[str] = mapped_column(String(100), default="default", index=True)
     estado: Mapped[str] = mapped_column(String(20), default="Pendiente", index=True)
     atendido_por: Mapped[str | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
     fecha_resolucion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from threading import Lock
 from typing import Any
 import secrets
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select
@@ -33,7 +34,7 @@ from .api_schemas import (
     AuditLogOut,
 )
 from .config import settings
-from .db import Base, engine, get_db
+from .db import Base, engine, ensure_runtime_columns, get_db
 from . import institutional_models  # noqa: F401
 from .institutional_router import router as institutional_router
 from .model_service import RiskPredictor, bootstrap_bundle, build_training_trace, combine_training_rows, load_jst_training_rows, load_ntsb_training_rows, save_bundle, train_bundle
@@ -46,6 +47,14 @@ from .security import create_access_token, decode_access_token, get_password_has
 
 app = FastAPI(title="AsPREDICTIVE API", version="2.0.0")
 predictor = RiskPredictor()
+training_state: dict[str, Any] = {
+    "status": "idle",
+    "started_at": None,
+    "finished_at": None,
+    "last_result": None,
+    "last_error": None,
+}
+training_lock = Lock()
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,6 +89,7 @@ async def http_exception_handler(_: Request, exc: HTTPException):
 @app.on_event("startup")
 def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_runtime_columns()
     with Session(bind=engine) as db:
         seed_initial_data(db)
         cleanup_expired_password_resets(db, PasswordResetToken)
@@ -101,6 +111,7 @@ def to_user_out(user: Usuario) -> UsuarioOut:
 def to_incidente_out(incidente: Incidente) -> IncidenteOut:
     return IncidenteOut(
         id=incidente.id,
+        organization_key=incidente.organization_key,
         aeropuerto_id=incidente.aeropuerto_id,
         pista_id=incidente.pista_id,
         aeronave_id=incidente.aeronave_id,
@@ -131,6 +142,7 @@ def to_incidente_out(incidente: Incidente) -> IncidenteOut:
 def to_alerta_out(alerta: Alerta) -> AlertaOut:
     return AlertaOut(
         id=alerta.id,
+        organization_key=alerta.organization_key,
         aeropuerto_id=alerta.aeropuerto_id,
         fecha_generacion=alerta.fecha_generacion,
         tipo_alerta=alerta.tipo_alerta,
@@ -174,18 +186,25 @@ def require_roles(*allowed_roles: str):
     return dependency
 
 
-def fetch_incidentes_with_relations(db: Session, limit: int) -> list[Incidente]:
+def fetch_incidentes_with_relations(db: Session, limit: int, organization_key: str = "default") -> list[Incidente]:
     statement = (
         select(Incidente)
         .options(joinedload(Incidente.aeropuerto), joinedload(Incidente.tipo_incidente), joinedload(Incidente.aeronave))
+        .where(Incidente.organization_key == organization_key)
         .order_by(Incidente.fecha_hora.desc())
         .limit(limit)
     )
     return list(db.scalars(statement))
 
 
-def fetch_alertas_with_relations(db: Session, estado: str | None, limit: int) -> list[Alerta]:
-    statement = select(Alerta).options(joinedload(Alerta.aeropuerto)).order_by(Alerta.fecha_generacion.desc()).limit(limit)
+def fetch_alertas_with_relations(db: Session, estado: str | None, limit: int, organization_key: str = "default") -> list[Alerta]:
+    statement = (
+        select(Alerta)
+        .options(joinedload(Alerta.aeropuerto))
+        .where(Alerta.organization_key == organization_key)
+        .order_by(Alerta.fecha_generacion.desc())
+        .limit(limit)
+    )
     if estado:
         statement = statement.where(Alerta.estado == estado)
     return list(db.scalars(statement))
@@ -228,19 +247,27 @@ def build_top_items(items: list[tuple[str, int]]) -> list[dict[str, int | str]]:
     return [{"clave": key, "total": int(total)} for key, total in items if key]
 
 
-def build_executive_report(db: Session, periodo_dias: int) -> ExecutiveReportResponse:
+def build_executive_report(db: Session, periodo_dias: int, organization_key: str = "default") -> ExecutiveReportResponse:
     cutoff = datetime.utcnow() - timedelta(days=periodo_dias)
     incidentes_periodo = list(
         db.scalars(
             select(Incidente)
             .options(joinedload(Incidente.aeropuerto), joinedload(Incidente.tipo_incidente), joinedload(Incidente.aeronave))
-            .where(Incidente.fecha_hora >= cutoff)
+            .where(Incidente.fecha_hora >= cutoff, Incidente.organization_key == organization_key)
             .order_by(Incidente.fecha_hora.desc())
         )
     )
-    alertas_pendientes = db.scalar(select(func.count()).select_from(Alerta).where(Alerta.estado == "Pendiente")) or 0
+    alertas_pendientes = db.scalar(
+        select(func.count()).select_from(Alerta).where(Alerta.estado == "Pendiente", Alerta.organization_key == organization_key)
+    ) or 0
     alertas_resueltas_periodo = (
-        db.scalar(select(func.count()).select_from(Alerta).where(Alerta.fecha_resolucion.is_not(None), Alerta.fecha_resolucion >= cutoff))
+        db.scalar(
+            select(func.count()).select_from(Alerta).where(
+                Alerta.fecha_resolucion.is_not(None),
+                Alerta.fecha_resolucion >= cutoff,
+                Alerta.organization_key == organization_key,
+            )
+        )
         or 0
     )
     usuarios_activos = db.scalar(select(func.count()).select_from(Usuario).where(Usuario.estado.is_(True))) or 0
@@ -254,7 +281,7 @@ def build_executive_report(db: Session, periodo_dias: int) -> ExecutiveReportRes
     top_aeropuertos_raw = db.execute(
         select(Aeropuerto.nombre, func.count(Incidente.id))
         .join(Incidente, Incidente.aeropuerto_id == Aeropuerto.id)
-        .where(Incidente.fecha_hora >= cutoff)
+        .where(Incidente.fecha_hora >= cutoff, Incidente.organization_key == organization_key)
         .group_by(Aeropuerto.nombre)
         .order_by(func.count(Incidente.id).desc(), Aeropuerto.nombre.asc())
         .limit(5)
@@ -262,14 +289,14 @@ def build_executive_report(db: Session, periodo_dias: int) -> ExecutiveReportRes
     top_tipos_raw = db.execute(
         select(TipoIncidente.nombre, func.count(Incidente.id))
         .join(Incidente, Incidente.tipo_incidente_id == TipoIncidente.id)
-        .where(Incidente.fecha_hora >= cutoff)
+        .where(Incidente.fecha_hora >= cutoff, Incidente.organization_key == organization_key)
         .group_by(TipoIncidente.nombre)
         .order_by(func.count(Incidente.id).desc(), TipoIncidente.nombre.asc())
         .limit(5)
     ).all()
     distribucion_riesgo_raw = db.execute(
         select(Incidente.nivel_riesgo, func.count(Incidente.id))
-        .where(Incidente.fecha_hora >= cutoff, Incidente.nivel_riesgo.is_not(None))
+        .where(Incidente.fecha_hora >= cutoff, Incidente.nivel_riesgo.is_not(None), Incidente.organization_key == organization_key)
         .group_by(Incidente.nivel_riesgo)
         .order_by(func.count(Incidente.id).desc())
     ).all()
@@ -360,6 +387,31 @@ def train_predictive_model_from_db(db: Session) -> dict[str, Any]:
     save_bundle(bundle)
     predictor.reload()
     return bundle
+
+
+def run_training_job() -> None:
+    with training_lock:
+        training_state["status"] = "running"
+        training_state["started_at"] = datetime.utcnow().isoformat()
+        training_state["finished_at"] = None
+        training_state["last_error"] = None
+
+    try:
+        with Session(bind=engine) as db:
+            bundle = train_predictive_model_from_db(db)
+        with training_lock:
+            training_state["status"] = "completed"
+            training_state["finished_at"] = datetime.utcnow().isoformat()
+            training_state["last_result"] = {
+                "training_rows": int(bundle["training_rows"]),
+                "model_version": predictor.model_version,
+                "metrics": bundle.get("metrics", {}),
+            }
+    except Exception as error:
+        with training_lock:
+            training_state["status"] = "failed"
+            training_state["finished_at"] = datetime.utcnow().isoformat()
+            training_state["last_error"] = str(error)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -532,10 +584,11 @@ def form_data(
 @app.get("/incidentes", response_model=list[IncidenteOut])
 def list_incidentes(
     limit: int = Query(default=50, ge=1, le=500),
+    organization_key: str = Query(default="default"),
     _: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[IncidenteOut]:
-    incidentes = fetch_incidentes_with_relations(db, limit)
+    incidentes = fetch_incidentes_with_relations(db, limit, organization_key=organization_key)
     return [to_incidente_out(incidente) for incidente in incidentes]
 
 
@@ -546,6 +599,7 @@ def create_incidente(
     db: Session = Depends(get_db),
 ) -> IncidenteOut:
     incidente = Incidente(
+        organization_key=payload.organization_key,
         aeropuerto_id=payload.aeropuerto_id,
         tipo_incidente_id=payload.tipo_incidente_id,
         aeronave_id=payload.aeronave_id,
@@ -567,7 +621,7 @@ def create_incidente(
         actor_user_id=current_user.id,
         action="incidente_creado",
         resource_type="incidente",
-        details={"aeropuerto_id": payload.aeropuerto_id, "nivel_riesgo": payload.nivel_riesgo},
+        details={"aeropuerto_id": payload.aeropuerto_id, "nivel_riesgo": payload.nivel_riesgo, "organization_key": payload.organization_key},
     )
     db.commit()
     db.refresh(incidente)
@@ -591,6 +645,7 @@ def update_incidente(
         raise HTTPException(status_code=404, detail="Incidente no encontrado")
 
     incidente.aeropuerto_id = payload.aeropuerto_id
+    incidente.organization_key = payload.organization_key
     incidente.tipo_incidente_id = payload.tipo_incidente_id
     incidente.aeronave_id = payload.aeronave_id
     incidente.fecha_hora = payload.fecha_hora
@@ -609,7 +664,7 @@ def update_incidente(
         action="incidente_actualizado",
         resource_type="incidente",
         resource_id=str(incidente_id),
-        details={"nivel_riesgo": payload.nivel_riesgo},
+        details={"nivel_riesgo": payload.nivel_riesgo, "organization_key": payload.organization_key},
     )
     db.commit()
 
@@ -625,10 +680,11 @@ def update_incidente(
 def list_alertas(
     estado: str | None = Query(default=None),
     limit: int = Query(default=10, ge=1, le=200),
+    organization_key: str = Query(default="default"),
     _: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[AlertaOut]:
-    alertas = fetch_alertas_with_relations(db, estado, limit)
+    alertas = fetch_alertas_with_relations(db, estado, limit, organization_key=organization_key)
     return [to_alerta_out(alerta) for alerta in alertas]
 
 
@@ -639,6 +695,7 @@ def create_alerta(
     db: Session = Depends(get_db),
 ) -> AlertaOut:
     alerta = Alerta(
+        organization_key=payload.organization_key,
         aeropuerto_id=payload.aeropuerto_id,
         tipo_alerta=payload.tipo_alerta,
         nivel_criticidad=payload.nivel_criticidad,
@@ -652,7 +709,7 @@ def create_alerta(
         actor_user_id=current_user.id,
         action="alerta_creada",
         resource_type="alerta",
-        details={"tipo_alerta": payload.tipo_alerta, "nivel_criticidad": payload.nivel_criticidad},
+        details={"tipo_alerta": payload.tipo_alerta, "nivel_criticidad": payload.nivel_criticidad, "organization_key": payload.organization_key},
     )
     db.commit()
     db.refresh(alerta)
@@ -689,14 +746,15 @@ def resolve_alerta(
 
 @app.get("/dashboard/summary", response_model=DashboardSummaryResponse)
 def dashboard_summary(
+    organization_key: str = Query(default="default"),
     _: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DashboardSummaryResponse:
-    recent_incidentes = fetch_incidentes_with_relations(db, 5)
-    all_incidentes = fetch_incidentes_with_relations(db, 200)
-    alertas = fetch_alertas_with_relations(db, "Pendiente", 10)
+    recent_incidentes = fetch_incidentes_with_relations(db, 5, organization_key=organization_key)
+    all_incidentes = fetch_incidentes_with_relations(db, 200, organization_key=organization_key)
+    alertas = fetch_alertas_with_relations(db, "Pendiente", 10, organization_key=organization_key)
 
-    total_incidentes = db.scalar(select(func.count()).select_from(Incidente)) or 0
+    total_incidentes = db.scalar(select(func.count()).select_from(Incidente).where(Incidente.organization_key == organization_key)) or 0
     total_aeropuertos = db.scalar(select(func.count()).select_from(Aeropuerto)) or 0
 
     stats = DashboardStats(
@@ -744,10 +802,11 @@ def model_traceability(_: Usuario = Depends(require_roles("administrador", "supe
 @app.get("/reports/executive", response_model=ExecutiveReportResponse)
 def executive_report(
     periodo_dias: int = Query(default=90, ge=7, le=365),
+    organization_key: str = Query(default="default"),
     _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
     db: Session = Depends(get_db),
 ) -> ExecutiveReportResponse:
-    return build_executive_report(db, periodo_dias)
+    return build_executive_report(db, periodo_dias, organization_key=organization_key)
 
 
 @app.get("/audit-logs", response_model=list[AuditLogOut])
@@ -771,12 +830,41 @@ def list_audit_logs(
     ]
 
 
+@app.get("/train/status")
+def train_status(_: Usuario = Depends(require_roles("administrador", "analista", "supervisor"))) -> dict[str, Any]:
+    with training_lock:
+        return dict(training_state)
+
+
 @app.post("/train")
 def train_model(
+    background_tasks: BackgroundTasks,
+    background: bool = Query(default=True),
     _: Usuario = Depends(require_roles("administrador", "analista")),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    if background:
+        with training_lock:
+            if training_state["status"] == "running":
+                return {"status": "running", "detail": "Ya existe un entrenamiento en curso"}
+            training_state["status"] = "queued"
+            training_state["started_at"] = datetime.utcnow().isoformat()
+            training_state["finished_at"] = None
+            training_state["last_error"] = None
+        background_tasks.add_task(run_training_job)
+        return {"status": "queued", "detail": "Entrenamiento enviado a segundo plano"}
+
     bundle = train_predictive_model_from_db(db)
+    with training_lock:
+        training_state["status"] = "completed"
+        training_state["started_at"] = datetime.utcnow().isoformat()
+        training_state["finished_at"] = datetime.utcnow().isoformat()
+        training_state["last_result"] = {
+            "training_rows": int(bundle["training_rows"]),
+            "model_version": predictor.model_version,
+            "metrics": bundle.get("metrics", {}),
+        }
+        training_state["last_error"] = None
     return {
         "status": "ok",
         "training_rows": int(bundle["training_rows"]),
