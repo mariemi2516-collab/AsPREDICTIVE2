@@ -7,6 +7,7 @@ AsPREDICTIVE genera evidencia operativa y analitica para apoyar actividades de g
 ## Endpoint principal
 
 - `GET /reports/executive?periodo_dias=90`
+- `GET /model/traceability`
 
 ## Contenido del reporte
 
@@ -30,6 +31,9 @@ AsPREDICTIVE genera evidencia operativa y analitica para apoyar actividades de g
 - acciones auditadas dentro del periodo
 - alertas pendientes y resueltas
 - version y volumen de entrenamiento del modelo
+- hashes y metadatos de archivos fuente usados en entrenamiento
+- cobertura del mapping JST y codigos de evento no catalogados
+- manifiesto exportable en `backend/models/traces/latest_training_trace.json`
 
 ## Uso sugerido frente a ANAC
 
