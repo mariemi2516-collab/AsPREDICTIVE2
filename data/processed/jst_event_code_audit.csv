@@ -1,0 +1,272 @@
+event_code,mapped_in_catalog,unknown_in_catalog,source_record_id,categoria_incidente,fase_vuelo,nivel_riesgo,mapping_rule_source
+ARC,True,False,JST-RAW-89927439-23,Pista,Aterrizaje,Critico,tabla_jst_event_code_mapping
+CFIT,True,False,JST-RAW-89927439-23,Pista,Aterrizaje,Critico,tabla_jst_event_code_mapping
+F-POST,True,False,JST-RAW-89927439-23,Pista,Aterrizaje,Critico,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-34614024-20,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-34847138-20,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-35562234-20,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-36068137-2020,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-44727485-2020,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+USOS,True,False,JST-RAW-53682470-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-55235134-2020,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-72771474-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-72771474-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-60896240-20,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-60896240-20,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-60896240-20,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-66729421-2020,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+OTHR,True,False,JST-RAW-66729421-2020,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-67758415-20,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-68704744-2020,Tecnico,En vuelo,Critico,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-68704744-2020,Tecnico,En vuelo,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-77459814-2020,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-70329590-20,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+OTHR,True,False,JST-RAW-72216558-2020,Operacion,En vuelo,Medio,tabla_jst_event_code_mapping
+USOS,True,False,JST-RAW-74339534-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+GTOW,True,False,JST-RAW-74340779-2020,Operacion,Despegue,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-74344013-2020,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-75511048-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-75511048-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+OTHR,True,False,JST-RAW-78780080-2020,Operacion,En vuelo,Medio,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-79286405-2020,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+CFIT,True,False,JST-RAW-19695992-23,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-19695992-23,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+NAV,True,False,JST-RAW-19695992-23,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-82929801-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-84605430-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-84943777-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-84943876-2020,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-85256397-2020,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-85395053-2020,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-5229196-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+ADRM,True,False,JST-RAW-89597356-2020,Pista,Aproximacion,Medio,tabla_jst_event_code_mapping
+CTOL,True,False,JST-RAW-90693298-2020,Operacion,Despegue,Critico,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-02025653-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-02505382-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+ADRM,True,False,JST-RAW-4510926-21,Pista,Aproximacion,Medio,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-3324219-21,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+AMAN,True,False,JST-RAW-6589216-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-6589216-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+ADRM,True,False,JST-RAW-24072277-21,Pista,Aproximacion,Medio,tabla_jst_event_code_mapping
+RI,True,False,JST-RAW-7146576-21,Pista,Rodaje,Medio,tabla_jst_event_code_mapping
+F-POST,True,False,JST-RAW-7090271-21,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-7090271-21,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-11837194-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+UNK,True,False,JST-RAW-13476494-21,Operacion,En vuelo,Bajo,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-13467164-2021,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-16573504-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-18060055-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-18060055-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-19196545-21,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-19196545-21,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+BIRD,True,False,JST-RAW-20256169-21,Fauna,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-20098649-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-20096630-21,Operacion,Aproximacion,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-20096630-21,Operacion,Aproximacion,Critico,tabla_jst_event_code_mapping
+WSTRW,True,False,JST-RAW-20096630-21,Operacion,Aproximacion,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-20087088-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-20099792-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-22564759-21,Pista,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-22564759-21,Pista,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-26301118-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-26301118-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-26302678-21,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-26302678-21,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+UIMC,True,False,JST-RAW-28547220-21,Operacion,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-31530947-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+F-POST,True,False,JST-RAW-32447215-21,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-32447215-21,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-39571139-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+BIRD,True,False,JST-RAW-39552999-21,Fauna,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ADRM,True,False,JST-RAW-39553582-21,Pista,Aproximacion,Medio,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-41953974-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ADRM,True,False,JST-RAW-44076210-21,Pista,Aproximacion,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-44076210-21,Pista,Aproximacion,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-48379302-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-67220206-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+OTHR,True,False,JST-RAW-55482492-21,Operacion,En vuelo,Medio,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-57388959-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-59349420-21,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+ADRM,True,False,JST-RAW-59719000-21,Pista,Aproximacion,Medio,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-59718268-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-60742424-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+F-NI,True,False,JST-RAW-62293219-21,Seguridad operacional,En vuelo,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-64093487-21,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-64534781-21,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-64536517-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-64536517-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-72510988-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-66978998-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-69379768-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-70293688-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-80437357-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-74901395-21,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+CFIT,True,False,JST-RAW-805339326-21,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-80441243-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RAMP,True,False,JST-RAW-86467423-21,Seguridad operacional,En tierra,Medio,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-88708570-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-94210642-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+CFIT,True,False,JST-RAW-97298782-21,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-97299571-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-99216983-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+BIRD,True,False,JST-RAW-99215439-21,Fauna,Aterrizaje,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-105094269-21,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+F-NI,True,False,JST-RAW-102726258-21,Seguridad operacional,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-105110377-21,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-105107497-21,Operacion,Maniobra a baja altura,Alto,tabla_jst_event_code_mapping
+AMAN,True,False,JST-RAW-105099341-21,Operacion,Despegue,Critico,tabla_jst_event_code_mapping
+CTOL,True,False,JST-RAW-105099341-21,Operacion,Despegue,Critico,tabla_jst_event_code_mapping
+AMAN,True,False,JST-RAW-105559269-21,Operacion,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-107714093-21,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-108963100-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+CFIT,True,False,JST-RAW-109328996-21,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+LOLI,True,False,JST-RAW-109328996-21,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+F-POST,True,False,JST-RAW-29824857-24,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-29824857-24,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-29824857-24,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-112293404-21,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+USOS,True,False,JST-RAW-113471705-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-119929779-21,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-6658234-22,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+EXTL,True,False,JST-RAW-126611445-21,Operacion,En vuelo,Alto,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-35544821-23,Seguridad operacional,Rodaje,Alto,tabla_jst_event_code_mapping
+RAMP,True,False,JST-RAW-35544821-23,Seguridad operacional,Rodaje,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-16106876-24,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+BIRD,True,False,JST-RAW-6496349-22,Fauna,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-22353426-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-70693621-24,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-25677952-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-24983343-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-24983343-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-26584049-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-35178584-22,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-36953095-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-49951658-22,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-44739297-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-47591895-22,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-53119193-22,Operacion,Rodaje,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-50053689-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-58320078-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-59370193-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-61313032-22,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-66227559-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+F-POST,True,False,JST-RAW-66817513-22,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-66817513-22,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-68409960-22,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-72420628-22,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+UNK,True,False,JST-RAW-75889825-22,Operacion,En vuelo,Bajo,tabla_jst_event_code_mapping
+MED,True,False,JST-RAW-95708560-24,Operacion,En vuelo,Medio,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-82971366-22,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-83752541-22,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-84997038-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-84927571-22,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-87179955-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-87179955-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-31587410-24,Operacion,Maniobra a baja altura,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-103748642-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+F-NI,True,False,JST-RAW-94709410-22,Seguridad operacional,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-96387208-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-96407094-22,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-19229436-24,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-101897044-22,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+UNK,True,False,JST-RAW-26650812-24,Operacion,En vuelo,Bajo,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-110785529-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-110785529-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-113211779-22,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-115512320-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-110420253-24,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-119495543-22,Operacion,Maniobra a baja altura,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-126759547-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+CTOL,True,False,JST-RAW-126729449-22,Operacion,Despegue,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-128134522-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-128134522-22,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-131057791-22,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-132437620-22,Tecnico,Ascenso inicial,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-132437620-22,Tecnico,Ascenso inicial,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-136178585-22,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-133386874-22,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-196643-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-12284361-23,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-11925282-23,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-12246865-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-12246865-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-12810042-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-13695767-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-13695767-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+AMAN,True,False,JST-RAW-24070713-23,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-24070713-23,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-25829777-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-25829777-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-27153213-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-22616761-24,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-44726864-25,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-22620434-24,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-37023615-23,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-39839692-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-42044921-23,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-45501611-23,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-01477104-25,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-48952747-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-50323535-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-98933552-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-51598653-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-51598653-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-51597322-23,Operacion,Maniobra a baja altura,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-51844797-23,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-58462912-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-58462912-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-58147231-23,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-67901159-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-67901159-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-71384627-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-70581035-23,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-74578608-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-75901059-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-82756806-23,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+GCOL,True,False,JST-RAW-82761122-23,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-113231830-23,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+UNK,True,False,JST-RAW-90996017-23,Operacion,En vuelo,Bajo,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-91187464-23,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-91787267-23,Tecnico,Rodaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-91787267-23,Tecnico,Rodaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-94451761-23,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-30773082-25,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-100035130-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-100035130-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-100899257-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-102007501-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-109789817-23,Tecnico,En vuelo,Alto,tabla_jst_event_code_mapping
+F-POST,True,False,JST-RAW-109799769-23,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-109799769-23,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-112416337-23,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+LOC-G,True,False,JST-RAW-113031542-23,Operacion,Rodaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-114756085-23,Pista,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-114756085-23,Pista,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-115025976-23,Operacion,Maniobra a baja altura,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-118708414-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-119797612-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-1740669-24,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+FUEL,True,False,JST-RAW-134231883-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-NP,True,False,JST-RAW-134231883-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-151508998-23,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-151508998-23,Operacion,Maniobra a baja altura,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-134235328-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-135569176-23,Operacion,En vuelo,Critico,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-135571047-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+F-NI,True,False,JST-RAW-145768499-23,Seguridad operacional,En vuelo,Alto,tabla_jst_event_code_mapping
+LALT,True,False,JST-RAW-140796134-23,Operacion,Maniobra a baja altura,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-141422183-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-147824849-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+F-POST,True,False,JST-RAW-149632535-23,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-149632535-23,Seguridad operacional,En tierra,Critico,tabla_jst_event_code_mapping
+RAMP,True,False,JST-RAW-149872133-23,Seguridad operacional,En tierra,Medio,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-152024017-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+BIRD,True,False,JST-RAW-152814990-23,Fauna,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+RE,True,False,JST-RAW-153681384-23,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-153827561-23,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+SCF-PP,True,False,JST-RAW-00404649-24,Tecnico,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+BIRD,True,False,JST-RAW-02351754-24,Fauna,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+WILD,True,False,JST-RAW-02351754-24,Fauna,Ascenso inicial,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-2048401-24,Pista,Aterrizaje,Alto,tabla_jst_event_code_mapping
+ARC,True,False,JST-RAW-3355492-24,Pista,Aterrizaje,Critico,tabla_jst_event_code_mapping
+LOC-I,True,False,JST-RAW-3355492-24,Pista,Aterrizaje,Critico,tabla_jst_event_code_mapping

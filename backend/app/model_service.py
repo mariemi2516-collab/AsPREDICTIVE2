@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -22,15 +25,168 @@ from .schemas import IncidentePayload, NivelRiesgo
 ROOT_DIR = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT_DIR / "models"
 MODEL_PATH = MODEL_DIR / "risk_model.joblib"
+TRACE_DIR = MODEL_DIR / "traces"
 PROJECT_ROOT = ROOT_DIR.parent
 NTSB_TRAINING_PATH = PROJECT_ROOT / "data" / "processed" / "ntsb_training_base.csv"
 JST_TRAINING_PATH = PROJECT_ROOT / "data" / "processed" / "jst_training_base.csv"
+JST_NORMALIZED_PATH = PROJECT_ROOT / "data" / "processed" / "jst_incidentes_template.csv"
+JST_EVENT_CODE_MAPPING_PATH = PROJECT_ROOT / "data" / "processed" / "jst_event_code_mapping.csv"
+JST_EVENT_CODE_AUDIT_PATH = PROJECT_ROOT / "data" / "processed" / "jst_event_code_audit.csv"
 RISK_ORDER: list[NivelRiesgo] = ["Bajo", "Medio", "Alto", "Crítico"]
 RISK_WEIGHTS = np.array([25.0, 50.0, 75.0, 100.0])
 
 
 def _normalize_text(value: str | None) -> str:
     return (value or "").strip().lower()
+
+
+def _safe_isoformat(timestamp: float | None) -> str | None:
+    if timestamp is None:
+        return None
+    return datetime.fromtimestamp(timestamp, tz=UTC).isoformat()
+
+
+def _file_sha256(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _read_csv_row_count(path: Path) -> int | None:
+    if not path.exists():
+        return None
+    try:
+        return int(len(pd.read_csv(path, low_memory=False)))
+    except Exception:
+        return None
+
+
+def _file_metadata(path: Path, label: str, source_kind: str) -> dict[str, Any]:
+    exists = path.exists()
+    stat = path.stat() if exists else None
+    return {
+        "label": label,
+        "path": str(path),
+        "source_kind": source_kind,
+        "exists": exists,
+        "size_bytes": stat.st_size if stat else None,
+        "modified_at": _safe_isoformat(stat.st_mtime if stat else None),
+        "sha256": _file_sha256(path) if exists else None,
+        "rows": _read_csv_row_count(path) if exists and path.suffix.lower() == ".csv" else None,
+    }
+
+
+def _label_distribution(rows: list[dict[str, Any]]) -> dict[str, int]:
+    labels = [str(row.get("nivel_riesgo")) for row in rows if row.get("nivel_riesgo")]
+    if not labels:
+        return {}
+    series = pd.Series(labels)
+    return {str(index): int(value) for index, value in series.value_counts().sort_index().items()}
+
+
+def _field_coverage(rows: list[dict[str, Any]], fields: list[str]) -> dict[str, float]:
+    if not rows:
+        return {field: 0.0 for field in fields}
+    frame = pd.DataFrame(rows)
+    coverage: dict[str, float] = {}
+    for field in fields:
+        if field not in frame.columns:
+            coverage[field] = 0.0
+            continue
+        values = frame[field]
+        present = values.notna() & values.astype(str).str.strip().ne("")
+        coverage[field] = round(float(present.mean()), 4)
+    return coverage
+
+
+def _jst_traceability_summary() -> dict[str, Any]:
+    if not JST_NORMALIZED_PATH.exists():
+        return {"available": False}
+
+    frame = pd.read_csv(JST_NORMALIZED_PATH, low_memory=False)
+    total = int(len(frame))
+    if total == 0:
+        return {"available": True, "rows": 0}
+
+    mapped_present = frame.get("mapped_event_codes", pd.Series("", index=frame.index)).fillna("").astype(str).str.strip().ne("")
+    unknown_present = frame.get("unknown_event_codes", pd.Series("", index=frame.index)).fillna("").astype(str).str.strip().ne("")
+    rule_source = frame.get("mapping_rule_source", pd.Series("", index=frame.index)).fillna("").astype(str)
+
+    unknown_codes: dict[str, int] = {}
+    for raw_value in frame.get("unknown_event_codes", pd.Series("", index=frame.index)).fillna("").astype(str):
+        for code in [item for item in raw_value.split("|") if item]:
+            unknown_codes[code] = unknown_codes.get(code, 0) + 1
+
+    return {
+        "available": True,
+        "rows": total,
+        "rows_with_catalog_mapping": int(mapped_present.sum()),
+        "rows_with_unknown_codes": int(unknown_present.sum()),
+        "catalog_mapping_coverage": round(float(mapped_present.mean()), 4),
+        "unknown_code_coverage": round(float(unknown_present.mean()), 4),
+        "mapping_rule_distribution": {str(index): int(value) for index, value in rule_source.value_counts().items()},
+        "unknown_codes_top": dict(sorted(unknown_codes.items(), key=lambda item: (-item[1], item[0]))[:10]),
+        "mapping_catalog_file": str(JST_EVENT_CODE_MAPPING_PATH),
+        "mapping_catalog_sha256": _file_sha256(JST_EVENT_CODE_MAPPING_PATH) if JST_EVENT_CODE_MAPPING_PATH.exists() else None,
+    }
+
+
+def build_training_trace(
+    training_rows: list[dict[str, Any]],
+    source_name: str,
+    postgres_rows: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    postgres_rows = postgres_rows or []
+    feature_fields = [
+        "descripcion",
+        "fase_vuelo",
+        "condicion_meteorologica",
+        "condicion_luz",
+        "latitud",
+        "longitud",
+        "visibilidad_millas",
+        "viento_kt",
+        "fecha_hora",
+    ]
+    return {
+        "generated_at": datetime.now(tz=UTC).isoformat(),
+        "source_name": source_name,
+        "training_rows_total": len(training_rows),
+        "postgres_rows_used": len(postgres_rows),
+        "risk_label_distribution": _label_distribution(training_rows),
+        "feature_coverage": _field_coverage(training_rows, feature_fields),
+        "sources": [
+            _file_metadata(NTSB_TRAINING_PATH, "ntsb_training_base", "csv"),
+            _file_metadata(JST_TRAINING_PATH, "jst_training_base", "csv"),
+            _file_metadata(JST_NORMALIZED_PATH, "jst_normalized", "csv"),
+            _file_metadata(JST_EVENT_CODE_MAPPING_PATH, "jst_event_code_mapping", "csv"),
+            _file_metadata(JST_EVENT_CODE_AUDIT_PATH, "jst_event_code_audit", "csv"),
+        ],
+        "jst_traceability": _jst_traceability_summary(),
+    }
+
+
+def save_training_trace(bundle: dict[str, Any], trace_dir: Path = TRACE_DIR) -> Path | None:
+    traceability = bundle.get("traceability")
+    if not traceability:
+        return None
+
+    trace_dir.mkdir(parents=True, exist_ok=True)
+    version_slug = str(bundle.get("model_version", "model")).replace("/", "-").replace("\\", "-")
+    timestamp_slug = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
+    trace_path = trace_dir / f"{timestamp_slug}_{version_slug}.json"
+    with trace_path.open("w", encoding="utf-8") as handle:
+        json.dump(traceability, handle, ensure_ascii=True, indent=2)
+
+    latest_path = trace_dir / "latest_training_trace.json"
+    with latest_path.open("w", encoding="utf-8") as handle:
+        json.dump(traceability, handle, ensure_ascii=True, indent=2)
+
+    return trace_path
 
 
 def build_feature_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
@@ -272,7 +428,9 @@ def create_model_pipeline() -> Pipeline:
             (
                 "classifier",
                 LogisticRegression(
-                    max_iter=1500,
+                    solver="saga",
+                    max_iter=400,
+                    tol=1e-3,
                     class_weight="balanced",
                     random_state=42,
                 ),
@@ -388,7 +546,11 @@ def _combine_fecha_hora(fecha: Any, hora: Any) -> str | None:
     return fecha_ts.isoformat()
 
 
-def train_bundle(rows: list[dict[str, Any]], source_name: str) -> dict[str, Any]:
+def train_bundle(
+    rows: list[dict[str, Any]],
+    source_name: str,
+    traceability: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     training_rows = [row for row in rows if row.get("nivel_riesgo") in RISK_ORDER]
     if len(training_rows) < 12:
         raise ValueError("Se requieren al menos 12 registros etiquetados para entrenar el modelo.")
@@ -415,6 +577,7 @@ def train_bundle(rows: list[dict[str, Any]], source_name: str) -> dict[str, Any]
         "risk_weights": RISK_WEIGHTS.tolist(),
         "model_version": f"logreg-multiclass-{source_name}",
         "training_rows": len(training_rows),
+        "traceability": traceability or build_training_trace(training_rows, source_name=source_name),
         "metrics": {
             "accuracy": accuracy,
             "samples_train": len(x_train),
@@ -427,11 +590,29 @@ def train_bundle(rows: list[dict[str, Any]], source_name: str) -> dict[str, Any]
 def save_bundle(bundle: dict[str, Any], path: Path = MODEL_PATH) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(bundle, path)
+    trace_path = save_training_trace(bundle)
+    if trace_path is not None:
+        bundle.setdefault("traceability", {})["trace_file"] = str(trace_path)
+        latest_path = TRACE_DIR / "latest_training_trace.json"
+        bundle["traceability"]["latest_trace_file"] = str(latest_path)
+        joblib.dump(bundle, path)
     return path
 
 
 def bootstrap_bundle() -> dict[str, Any]:
-    return train_bundle(create_training_rows(), source_name="bootstrap")
+    rows = create_training_rows()
+    traceability = {
+        "generated_at": datetime.now(tz=UTC).isoformat(),
+        "source_name": "bootstrap",
+        "training_rows_total": len(rows),
+        "postgres_rows_used": 0,
+        "risk_label_distribution": _label_distribution(rows),
+        "feature_coverage": _field_coverage(rows, ["descripcion", "fase_vuelo", "latitud", "longitud", "fecha_hora"]),
+        "sources": [],
+        "jst_traceability": {"available": False},
+        "mode": "bootstrap_sintetico",
+    }
+    return train_bundle(rows, source_name="bootstrap", traceability=traceability)
 
 
 def best_available_training_bundle() -> dict[str, Any]:
@@ -439,7 +620,8 @@ def best_available_training_bundle() -> dict[str, Any]:
     jst_rows = load_jst_training_rows()
     training_rows, source_name = combine_training_rows(ntsb_rows, jst_rows)
     if len(training_rows) >= 12:
-        return train_bundle(training_rows, source_name=source_name)
+        traceability = build_training_trace(training_rows, source_name=source_name)
+        return train_bundle(training_rows, source_name=source_name, traceability=traceability)
     return bootstrap_bundle()
 
 

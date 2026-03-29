@@ -24,6 +24,8 @@ Copiar `backend/.env.example` a `backend/.env` y completar:
 python train_model.py
 ```
 
+Cada entrenamiento deja un manifiesto de trazabilidad en `backend/models/traces/` con hashes de fuentes, volumen, distribucion de etiquetas, cobertura de campos y cobertura del mapping JST.
+
 Si la base tiene suficientes incidentes etiquetados por `nivel_riesgo`, el modelo se entrena con PostgreSQL.
 Si todavía no los tiene, se genera un modelo bootstrap inicial.
 
@@ -50,6 +52,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `POST /predict`
 - `POST /train`
 - `GET /model/metrics`
+- `GET /model/traceability`
 - `GET /audit-logs`
 - `GET /reports/executive`
 

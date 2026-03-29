@@ -62,6 +62,12 @@ class ModelMetricsOut(BaseModel):
     samples_test: int | None = None
 
 
+class ModelTraceabilityOut(BaseModel):
+    model_version: str
+    training_rows: int
+    traceability: dict
+
+
 class CatalogAeropuertoOut(BaseModel):
     id: int
     codigo_iata: str | None = None

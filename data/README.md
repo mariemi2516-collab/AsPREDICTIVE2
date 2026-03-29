@@ -13,6 +13,7 @@ Esta carpeta organiza fuentes oficiales de aviacion y clima para construir datas
 - `processed/official_raw_files.csv`: inventario de archivos descargados o pendientes
 - `processed/training_incidentes_template.csv`: esquema general del dataset de incidentes
 - `processed/jst_incidentes_template.csv`: plantilla de carga para incidentes argentinos JST
+- `processed/jst_event_code_mapping.csv`: tabla auditable de mapeo por codigos de suceso JST
 - `scripts/fetch_official_aviation_data.py`: descarga fuentes oficiales
 - `scripts/import_jst_argentina.py`: transforma JST a CSV de entrenamiento e inserta incidentes en PostgreSQL
 
@@ -36,6 +37,8 @@ Eso hace dos cosas:
 
 - genera `processed/jst_training_base.csv`
 - inserta incidentes en PostgreSQL si la base esta configurada
+
+La clasificacion de `categoria_incidente`, `fase_vuelo` y `nivel_riesgo` para exports crudos de JST se apoya primero en `processed/jst_event_code_mapping.csv` y usa heuristicas solo como fallback.
 
 Si solo quieres generar el CSV de entrenamiento sin tocar la base:
 

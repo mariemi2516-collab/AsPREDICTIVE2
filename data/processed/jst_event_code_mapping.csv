@@ -1,0 +1,30 @@
+event_code,categoria_incidente,fase_vuelo,nivel_riesgo,notas
+SCF-PP,Tecnico,Ascenso inicial,Alto,Falla de motor o planta de poder
+SCF-NP,Tecnico,En vuelo,Alto,Falla de sistema sin powerplant
+FUEL,Tecnico,Ascenso inicial,Alto,Evento relacionado con combustible
+BIRD,Fauna,Aterrizaje,Alto,Impacto con aves
+WILD,Fauna,Aterrizaje,Alto,Impacto con fauna
+ARC,Pista,Aterrizaje,Alto,Contacto anormal con pista
+RE,Pista,Aterrizaje,Alto,Excursion de pista
+USOS,Pista,Aterrizaje,Alto,Queda corto o largo en aterrizaje
+RI,Pista,Rodaje,Medio,Incursion de pista
+ADRM,Pista,Aproximacion,Medio,Evento de aerodromo
+CTOL,Operacion,Despegue,Critico,Colision con obstaculo en despegue o aterrizaje
+GCOL,Operacion,Rodaje,Alto,Colision en tierra
+LOC-I,Operacion,En vuelo,Critico,Perdida de control en vuelo
+LOC-G,Operacion,Rodaje,Alto,Perdida de control en tierra
+CFIT,Operacion,En vuelo,Critico,Impacto controlado contra el terreno
+LALT,Operacion,Maniobra a baja altura,Alto,Operaciones a baja altura
+NAV,Operacion,En vuelo,Medio,Error de navegacion
+UIMC,Operacion,En vuelo,Alto,Vuelo inadvertido en IMC
+LOLI,Operacion,En vuelo,Alto,Perdida de condiciones de sustentacion
+AMAN,Operacion,En vuelo,Alto,Maniobra abrupta
+RAMP,Seguridad operacional,En tierra,Medio,Ground handling o rampa
+F-POST,Seguridad operacional,En tierra,Critico,Fuego o humo post impacto
+F-NI,Seguridad operacional,En vuelo,Alto,Fuego o humo no asociado a impacto
+MED,Operacion,En vuelo,Medio,Evento medico
+OTHR,Operacion,En vuelo,Medio,Otro evento operacional
+UNK,Operacion,En vuelo,Bajo,Evento indeterminado
+EXTL,Operacion,En vuelo,Alto,Evento de carga externa
+GTOW,Operacion,Despegue,Alto,Remolque de planeador
+WSTRW,Operacion,Aproximacion,Critico,Windshear o tormenta

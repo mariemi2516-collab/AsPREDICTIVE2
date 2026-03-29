@@ -7,7 +7,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import SessionLocal
-from app.model_service import MODEL_PATH, bootstrap_bundle, combine_training_rows, load_jst_training_rows, load_ntsb_training_rows, save_bundle, train_bundle
+from app.model_service import (
+    MODEL_PATH,
+    bootstrap_bundle,
+    build_training_trace,
+    combine_training_rows,
+    load_jst_training_rows,
+    load_ntsb_training_rows,
+    save_bundle,
+    train_bundle,
+)
 from app.models import Incidente
 
 
@@ -42,14 +51,22 @@ def main() -> None:
     training_rows, source_name = combine_training_rows([*ntsb_rows, *jst_rows], postgres_rows)
 
     if len(training_rows) >= 12:
-        bundle = train_bundle(training_rows, source_name=source_name)
+        traceability = build_training_trace(training_rows, source_name=source_name, postgres_rows=postgres_rows)
+        bundle = train_bundle(training_rows, source_name=source_name, traceability=traceability)
     else:
         bundle = bootstrap_bundle()
 
     path = save_bundle(bundle, MODEL_PATH)
+    trace_path = bundle.get("traceability", {}).get("trace_file")
     print(f"Modelo guardado en: {path}")
+    if trace_path:
+        print(f"Trazabilidad de entrenamiento guardada en: {trace_path}")
     print(f"Version: {bundle['model_version']}")
     print(f"Registros de entrenamiento: {bundle['training_rows']}")
+    if bundle.get("traceability"):
+        traceability = bundle["traceability"]
+        print(f"Fuente compuesta: {traceability.get('source_name')}")
+        print(f"Distribucion de etiquetas: {traceability.get('risk_label_distribution')}")
     if bundle.get("metrics"):
         print(f"Accuracy holdout: {bundle['metrics']['accuracy']:.4f}")
         print(f"Train/Test: {bundle['metrics']['samples_train']}/{bundle['metrics']['samples_test']}")

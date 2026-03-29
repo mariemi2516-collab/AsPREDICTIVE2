@@ -25,6 +25,7 @@ from .api_schemas import (
     IncidentePayload,
     LoginRequest,
     ModelMetricsOut,
+    ModelTraceabilityOut,
     PasswordResetConfirm,
     PasswordResetRequest,
     RegisterRequest,
@@ -35,7 +36,7 @@ from .config import settings
 from .db import Base, engine, get_db
 from . import institutional_models  # noqa: F401
 from .institutional_router import router as institutional_router
-from .model_service import RiskPredictor, bootstrap_bundle, combine_training_rows, load_jst_training_rows, load_ntsb_training_rows, save_bundle, train_bundle
+from .model_service import RiskPredictor, bootstrap_bundle, build_training_trace, combine_training_rows, load_jst_training_rows, load_ntsb_training_rows, save_bundle, train_bundle
 from .models import Aeronave, Aeropuerto, Alerta, AuditLog, Incidente, PasswordResetToken, TipoIncidente, Usuario
 from .observability import cleanup_expired_password_resets, log_request_event, logger, write_audit_log
 from .schemas import HealthResponse, IncidentePayload as PredictPayload, PredictionResponse
@@ -353,7 +354,8 @@ def train_predictive_model_from_db(db: Session) -> dict[str, Any]:
     if len(training_rows) < 12:
         bundle = bootstrap_bundle()
     else:
-        bundle = train_bundle(training_rows, source_name=source_name)
+        traceability = build_training_trace(training_rows, source_name=source_name, postgres_rows=postgres_rows)
+        bundle = train_bundle(training_rows, source_name=source_name, traceability=traceability)
 
     save_bundle(bundle)
     predictor.reload()
@@ -727,6 +729,15 @@ def model_metrics(_: Usuario = Depends(get_current_user)) -> ModelMetricsOut:
         accuracy=metrics.get("accuracy"),
         samples_train=metrics.get("samples_train"),
         samples_test=metrics.get("samples_test"),
+    )
+
+
+@app.get("/model/traceability", response_model=ModelTraceabilityOut)
+def model_traceability(_: Usuario = Depends(require_roles("administrador", "supervisor", "analista"))) -> ModelTraceabilityOut:
+    return ModelTraceabilityOut(
+        model_version=predictor.model_version,
+        training_rows=int(predictor.bundle.get("training_rows", 0)),
+        traceability=predictor.bundle.get("traceability", {}),
     )
 
 
