@@ -2,7 +2,6 @@ import type {
   Aeropuerto,
   Aeronave,
   Alerta,
-  AuthSession,
   DashboardSummary,
   FormCatalogs,
   Incidente,
@@ -24,6 +23,7 @@ import { addOfflineConflict, enqueueOfflineMutation, getOfflineConflictCount, ge
 
 const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 const TOKEN_KEY = 'aviation_auth_token';
+const DEFAULT_ORGANIZATION_KEY = 'default';
 
 type RequestOptions = RequestInit & {
   auth?: boolean;
@@ -167,13 +167,13 @@ export const api = {
     return request<Usuario>('/auth/me');
   },
   async getDashboardSummary() {
-    return request<DashboardSummary>('/dashboard/summary');
+    return request<DashboardSummary>(`/dashboard/summary?organization_key=${DEFAULT_ORGANIZATION_KEY}`);
   },
   async getFormCatalogs() {
     return request<FormCatalogs>('/catalogs/form-data');
   },
   async listIncidentes(limit = 50) {
-    return request<Incidente[]>(`/incidentes?limit=${limit}`);
+    return request<Incidente[]>(`/incidentes?limit=${limit}&organization_key=${DEFAULT_ORGANIZATION_KEY}`);
   },
   async createIncidente(payload: {
     aeropuerto_id: number | null;
@@ -194,14 +194,14 @@ export const api = {
       await enqueueOfflineMutation({
         method: 'POST',
         path: '/incidentes',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, organization_key: DEFAULT_ORGANIZATION_KEY }),
         label: 'Crear incidente',
       });
-      return { id: -Date.now(), ...payload, created_at: new Date().toISOString() } as unknown as Incidente;
+      return { id: -Date.now(), organization_key: DEFAULT_ORGANIZATION_KEY, ...payload, created_at: new Date().toISOString() } as unknown as Incidente;
     }
     return request<Incidente>('/incidentes', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, organization_key: DEFAULT_ORGANIZATION_KEY }),
     });
   },
   async updateIncidente(id: number, payload: {
@@ -223,18 +223,18 @@ export const api = {
       await enqueueOfflineMutation({
         method: 'PUT',
         path: `/incidentes/${id}`,
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, organization_key: DEFAULT_ORGANIZATION_KEY }),
         label: 'Actualizar incidente',
       });
-      return { id, ...payload, created_at: new Date().toISOString() } as unknown as Incidente;
+      return { id, organization_key: DEFAULT_ORGANIZATION_KEY, ...payload, created_at: new Date().toISOString() } as unknown as Incidente;
     }
     return request<Incidente>(`/incidentes/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, organization_key: DEFAULT_ORGANIZATION_KEY }),
     });
   },
   async listAlertasPendientes(limit = 10) {
-    return request<Alerta[]>(`/alertas?estado=Pendiente&limit=${limit}`);
+    return request<Alerta[]>(`/alertas?estado=Pendiente&limit=${limit}&organization_key=${DEFAULT_ORGANIZATION_KEY}`);
   },
   async createAlerta(payload: {
     aeropuerto_id: number | null;
@@ -246,7 +246,7 @@ export const api = {
   }) {
     return request<Alerta>('/alertas', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, organization_key: DEFAULT_ORGANIZATION_KEY }),
     });
   },
   async resolveAlerta(alertaId: number) {
@@ -257,7 +257,7 @@ export const api = {
         body: JSON.stringify({}),
         label: 'Resolver alerta',
       });
-      return { id: alertaId, estado: 'Pendiente' } as unknown as Alerta;
+      return { id: alertaId, organization_key: DEFAULT_ORGANIZATION_KEY, estado: 'Pendiente' } as unknown as Alerta;
     }
     return request<Alerta>(`/alertas/${alertaId}/resolve`, {
       method: 'POST',
@@ -277,7 +277,7 @@ export const api = {
     return request<Aeronave[]>('/catalogs/aeronaves');
   },
   async getReporteEjecutivo(periodoDias = 90) {
-    return request<ReporteEjecutivo>(`/reports/executive?periodo_dias=${periodoDias}`);
+    return request<ReporteEjecutivo>(`/reports/executive?periodo_dias=${periodoDias}&organization_key=${DEFAULT_ORGANIZATION_KEY}`);
   },
   async listFormTemplates(organizationKey = 'default') {
     return request<FormTemplate[]>(`/institutional/form-templates?organization_key=${organizationKey}`);

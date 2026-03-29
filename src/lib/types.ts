@@ -51,6 +51,7 @@ export type NivelRiesgo = 'Bajo' | 'Medio' | 'Alto' | 'Crítico';
 
 export interface Incidente {
   id: number;
+  organization_key: string;
   aeropuerto_id: number | null;
   pista_id: number | null;
   aeronave_id: number | null;
@@ -74,6 +75,7 @@ export interface Incidente {
 
 export interface Alerta {
   id: number;
+  organization_key: string;
   aeropuerto_id: number | null;
   fecha_generacion: string;
   tipo_alerta: string | null;

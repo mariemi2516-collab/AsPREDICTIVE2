@@ -32,7 +32,7 @@ from .institutional_schemas import (
     TrainingRecordOut,
     TrainingRecordPayload,
 )
-from .models import Usuario
+from .models import Alerta, Incidente, Usuario
 from .observability import write_audit_log
 from .security import decode_access_token
 
@@ -222,6 +222,8 @@ def ensure_operational_notifications(db: Session, organization_key: str) -> None
 
 def build_regulatory_lines(
     organization_key: str,
+    incidents: list[Incidente],
+    alerts: list[Alerta],
     inspections: list[Inspection],
     actions: list[CorrectiveAction],
     records: list[TrainingRecord],
@@ -232,21 +234,53 @@ def build_regulatory_lines(
         f"Organizacion: {organization_key}",
         f"Generado: {datetime.utcnow().isoformat()}",
         "",
-        "1. INSPECCIONES",
+        "0. RESUMEN",
+        f"- Incidentes considerados: {len(incidents)}",
+        f"- Alertas consideradas: {len(alerts)}",
+        f"- Inspecciones consideradas: {len(inspections)}",
+        f"- Acciones correctivas consideradas: {len(actions)}",
+        f"- Capacitaciones consideradas: {len(records)}",
+        f"- Notificaciones consideradas: {len(notifications)}",
+        "",
+        "1. INCIDENTES RECIENTES",
     ]
+    lines.extend(
+        [
+            f"- id={item.id} | fecha={item.fecha_hora.isoformat()} | riesgo={item.nivel_riesgo or 'N/D'} | fase={item.fase_vuelo or 'N/D'} | descripcion={((item.descripcion or '').strip() or 'Sin descripcion')[:120]}"
+            for item in incidents
+        ]
+        or ["- Sin registros"]
+    )
+    lines.append("")
+    lines.append("2. ALERTAS")
+    lines.extend(
+        [
+            f"- id={item.id} | tipo={item.tipo_alerta or 'N/D'} | criticidad={item.nivel_criticidad or 'N/D'} | estado={item.estado} | score={item.score_predictivo if item.score_predictivo is not None else 'N/D'}"
+            for item in alerts
+        ]
+        or ["- Sin registros"]
+    )
+    lines.append("")
+    lines.append("3. INSPECCIONES")
     lines.extend([f"- {item.titulo} | estado={item.estado} | criticidad={item.criticidad or 'N/D'}" for item in inspections] or ["- Sin registros"])
     lines.append("")
-    lines.append("2. ACCIONES CORRECTIVAS")
-    lines.extend([f"- {item.titulo} | prioridad={item.prioridad} | estado={item.estado}" for item in actions] or ["- Sin registros"])
+    lines.append("4. ACCIONES CORRECTIVAS")
+    lines.extend(
+        [
+            f"- {item.titulo} | prioridad={item.prioridad} | estado={item.estado} | incidente_id={item.incidente_id or 'N/D'} | inspeccion_id={item.inspection_id or 'N/D'}"
+            for item in actions
+        ]
+        or ["- Sin registros"]
+    )
     lines.append("")
-    lines.append("3. CAPACITACIONES")
+    lines.append("5. CAPACITACIONES")
     lines.extend([f"- registro {item.id} | course_id={item.course_id} | estado={item.estado}" for item in records] or ["- Sin registros"])
     lines.append("")
-    lines.append("4. NOTIFICACIONES")
+    lines.append("6. NOTIFICACIONES")
     lines.extend([f"- {item.titulo} | severidad={item.severidad} | estado={item.estado}" for item in notifications] or ["- Sin registros"])
     lines.append("")
-    lines.append("5. TRAZABILIDAD")
-    lines.append("Este reporte puede utilizarse como base previa para exporte PDF institucional.")
+    lines.append("7. TRAZABILIDAD")
+    lines.append("Este reporte resume evidencias operativas, alertas y acciones para seguimiento institucional y exporte PDF.")
     return lines
 
 
@@ -781,12 +815,22 @@ def export_regulatory_report(
     _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
     db: Session = Depends(get_db),
 ) -> RegulatoryExportOut:
+    incidents = list(
+        db.scalars(
+            select(Incidente).where(Incidente.organization_key == organization_key).order_by(Incidente.fecha_hora.desc()).limit(10)
+        )
+    )
+    alerts = list(
+        db.scalars(
+            select(Alerta).where(Alerta.organization_key == organization_key).order_by(Alerta.fecha_generacion.desc()).limit(10)
+        )
+    )
     inspections = list(db.scalars(select(Inspection).where(Inspection.organization_key == organization_key).order_by(Inspection.created_at.desc()).limit(10)))
     actions = list(db.scalars(select(CorrectiveAction).where(CorrectiveAction.organization_key == organization_key).order_by(CorrectiveAction.created_at.desc()).limit(10)))
     records = list(db.scalars(select(TrainingRecord).where(TrainingRecord.organization_key == organization_key).order_by(TrainingRecord.created_at.desc()).limit(10)))
     notifications = list(db.scalars(select(NotificationEvent).where(NotificationEvent.organization_key == organization_key).order_by(NotificationEvent.created_at.desc()).limit(10)))
 
-    lines = build_regulatory_lines(organization_key, inspections, actions, records, notifications)
+    lines = build_regulatory_lines(organization_key, incidents, alerts, inspections, actions, records, notifications)
 
     return RegulatoryExportOut(
         generado_en=datetime.utcnow(),
@@ -802,11 +846,21 @@ def export_regulatory_report_pdf(
     _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
+    incidents = list(
+        db.scalars(
+            select(Incidente).where(Incidente.organization_key == organization_key).order_by(Incidente.fecha_hora.desc()).limit(10)
+        )
+    )
+    alerts = list(
+        db.scalars(
+            select(Alerta).where(Alerta.organization_key == organization_key).order_by(Alerta.fecha_generacion.desc()).limit(10)
+        )
+    )
     inspections = list(db.scalars(select(Inspection).where(Inspection.organization_key == organization_key).order_by(Inspection.created_at.desc()).limit(10)))
     actions = list(db.scalars(select(CorrectiveAction).where(CorrectiveAction.organization_key == organization_key).order_by(CorrectiveAction.created_at.desc()).limit(10)))
     records = list(db.scalars(select(TrainingRecord).where(TrainingRecord.organization_key == organization_key).order_by(TrainingRecord.created_at.desc()).limit(10)))
     notifications = list(db.scalars(select(NotificationEvent).where(NotificationEvent.organization_key == organization_key).order_by(NotificationEvent.created_at.desc()).limit(10)))
-    lines = build_regulatory_lines(organization_key, inspections, actions, records, notifications)
+    lines = build_regulatory_lines(organization_key, incidents, alerts, inspections, actions, records, notifications)
 
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)

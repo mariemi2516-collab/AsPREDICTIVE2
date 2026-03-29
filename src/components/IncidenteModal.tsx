@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
-import type { Aeronave, Aeropuerto, Incidente, TipoIncidente } from '../lib/types';
+import { formatCoordinates, formatWeatherSummary, summarizeDescription } from '../lib/presentation';
+import type { Aeronave, Aeropuerto, Incidente, NivelRiesgo, TipoIncidente } from '../lib/types';
 import { getPrediccionRiesgo } from '../services/predictiveService';
 
 const FASES_VUELO = [
@@ -41,7 +42,7 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
     aeronave_id: incidente?.aeronave_id || '',
     fecha_hora: incidente?.fecha_hora ? new Date(incidente.fecha_hora).toISOString().slice(0, 16) : '',
     descripcion: incidente?.descripcion || '',
-    nivel_riesgo: incidente?.nivel_riesgo || 'Bajo',
+    nivel_riesgo: (incidente?.nivel_riesgo || 'Bajo') as NivelRiesgo,
     fase_vuelo: incidente?.fase_vuelo || '',
     condicion_meteorologica: incidente?.condicion_meteorologica || '',
     condicion_luz: incidente?.condicion_luz || '',
@@ -186,10 +187,10 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">Nivel de riesgo</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">Nivel de referencia</label>
               <select
                 value={formData.nivel_riesgo}
-                onChange={(e) => setFormData({ ...formData, nivel_riesgo: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, nivel_riesgo: e.target.value as NivelRiesgo })}
                 required
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               >
@@ -200,7 +201,7 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
                 ))}
               </select>
               <p className="mt-2 text-xs text-gray-500">
-                El nivel final se recalcula automaticamente con el motor predictivo al guardar.
+                Este valor es orientativo. El nivel final se recalcula automaticamente con el motor predictivo al guardar.
               </p>
             </div>
 
@@ -310,6 +311,36 @@ export default function IncidenteModal({ incidente, onClose }: Props) {
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               placeholder="Describe el incidente en detalle..."
             />
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Vista previa de carga</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Descripcion</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">{summarizeDescription(formData.descripcion)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Ubicacion</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  {formatCoordinates(
+                    formData.latitud ? parseFloat(String(formData.latitud)) : null,
+                    formData.longitud ? parseFloat(String(formData.longitud)) : null,
+                  )}
+                </p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="text-xs font-semibold text-slate-500">Clima y condiciones</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  {formatWeatherSummary({
+                    condicion_meteorologica: formData.condicion_meteorologica || null,
+                    condicion_luz: formData.condicion_luz || null,
+                    visibilidad_millas: formData.visibilidad_millas ? parseFloat(String(formData.visibilidad_millas)) : null,
+                    viento_kt: formData.viento_kt ? parseFloat(String(formData.viento_kt)) : null,
+                  })}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">

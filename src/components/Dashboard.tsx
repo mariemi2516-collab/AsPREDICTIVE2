@@ -12,6 +12,7 @@ import {
 import { api } from '../lib/api';
 import type { Alerta, Incidente } from '../lib/types';
 import { getPrediccionRiesgo, type PredictiveResult } from '../services/predictiveService';
+import { buildIncidentAlertMessage, formatCoordinates, formatDateTime, formatWeatherSummary, humanizePredictiveFactors, summarizeDescription } from '../lib/presentation';
 import AlertasPanel from './AlertasPanel';
 import IncidentesTable from './IncidentesTable';
 import InstitutionalPanel from './InstitutionalPanel';
@@ -31,10 +32,7 @@ async function generarAlertasPredictivas() {
       const pred = await getPrediccionRiesgo(incidente);
       if (pred.score <= 70) return;
 
-      const resumenFactores = pred.factores?.slice(0, 2).join(', ');
-      const mensaje = resumenFactores
-        ? `Alto riesgo detectado en incidente ${incidente.id}. Factores: ${resumenFactores}.`
-        : `Alto riesgo detectado en incidente ${incidente.id}`;
+      const mensaje = buildIncidentAlertMessage(incidente, pred.score, pred.factores || []);
 
       const alertaExistente = alertasPendientes.find(
         (alerta) =>
@@ -262,6 +260,9 @@ export default function Dashboard() {
                     <div>
                       <p className="text-base font-semibold text-slate-900">{incidente.tipos_incidente?.nombre || 'Incidente'}</p>
                       <p className="mt-1 text-sm text-slate-500">{incidente.aeropuertos?.nombre || 'Aeropuerto no identificado'}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-700">
+                        {summarizeDescription(incidente.descripcion)}
+                      </p>
                     </div>
                     {incidentPredictions[incidente.id] && (
                       <div className="text-right">
@@ -280,21 +281,35 @@ export default function Dashboard() {
                         {incidente.fase_vuelo}
                       </span>
                     )}
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
+                      {formatDateTime(incidente.fecha_hora)}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Condiciones</p>
+                      <p className="mt-2 leading-6 text-slate-700">{formatWeatherSummary(incidente)}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ubicacion reportada</p>
+                      <p className="mt-2 leading-6 text-slate-700">{formatCoordinates(incidente.latitud, incidente.longitud)}</p>
+                    </div>
                   </div>
 
                   {incidentPredictions[incidente.id] && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
                       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
                         <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-800">
-                          Modelo: {incidentPredictions[incidente.id].modelo || 'No disponible'}
+                          Modelo predictivo activo
                         </span>
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
                           Origen: {incidentPredictions[incidente.id].fuente === 'api' ? 'Produccion' : 'Contingencia local'}
                         </span>
                       </div>
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Factores principales</p>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Lectura operacional sugerida</p>
                       <div className="flex flex-wrap gap-2">
-                        {(incidentPredictions[incidente.id].factores?.slice(0, 3) || ['Sin factores disponibles']).map((factor) => (
+                        {humanizePredictiveFactors(incidentPredictions[incidente.id].factores).slice(0, 3).map((factor) => (
                           <span key={factor} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700">
                             {factor}
                           </span>

@@ -115,6 +115,7 @@ class RelatedAeronaveOut(BaseModel):
 
 
 class IncidentePayload(BaseModel):
+    organization_key: str = "default"
     aeropuerto_id: int | None = None
     tipo_incidente_id: int | None = None
     aeronave_id: int | None = None
@@ -132,6 +133,7 @@ class IncidentePayload(BaseModel):
 
 class IncidenteOut(BaseModel):
     id: int
+    organization_key: str = "default"
     aeropuerto_id: int | None = None
     pista_id: int | None = None
     aeronave_id: int | None = None
@@ -154,6 +156,7 @@ class IncidenteOut(BaseModel):
 
 
 class AlertaCreate(BaseModel):
+    organization_key: str = "default"
     aeropuerto_id: int | None = None
     tipo_alerta: str
     nivel_criticidad: str
@@ -168,6 +171,7 @@ class RelatedAlertaAeropuertoOut(BaseModel):
 
 class AlertaOut(BaseModel):
     id: int
+    organization_key: str = "default"
     aeropuerto_id: int | None = None
     fecha_generacion: datetime
     tipo_alerta: str | None = None
