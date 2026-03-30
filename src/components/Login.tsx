@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { KeyRound, Plane, UserCircle2 } from 'lucide-react';
+import { LockKeyhole, Plane } from 'lucide-react';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -23,12 +23,6 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function fillDemoCredentials() {
-    setEmail('admin@aspredictive.local');
-    setPassword('Admin12345');
-    setError('');
   }
 
   return (
@@ -70,7 +64,7 @@ export default function Login() {
 
             <div>
               <label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-700">
-                Contraseña
+                Contrasena
               </label>
               <input
                 id="password"
@@ -79,7 +73,7 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 transition focus:border-transparent focus:ring-2 focus:ring-blue-500"
-                placeholder="Ingresa tu contraseña"
+                placeholder="Ingresa tu contrasena"
               />
             </div>
 
@@ -94,25 +88,14 @@ export default function Login() {
 
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Acceso de demostracion
+              Acceso institucional
             </p>
             <div className="mt-3 space-y-2 text-sm text-slate-700">
               <p className="flex items-center gap-2">
-                <UserCircle2 className="h-4 w-4 text-sky-700" />
-                Usuario: <span className="font-medium">admin@aspredictive.local</span>
-              </p>
-              <p className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-sky-700" />
-                Contraseña: <span className="font-medium">Admin12345</span>
+                <LockKeyhole className="h-4 w-4 text-sky-700" />
+                Ingresa con credenciales provistas por la administracion del sistema.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={fillDemoCredentials}
-              className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              Usar credenciales demo
-            </button>
           </div>
 
           <p className="mt-6 text-center text-sm text-gray-600">

@@ -15,7 +15,6 @@ class FormTemplateFieldPayload(BaseModel):
 
 
 class FormTemplatePayload(BaseModel):
-    organization_key: str = "default"
     nombre: str = Field(min_length=2, max_length=150)
     modulo: str = Field(min_length=2, max_length=50)
     version: int = 1
@@ -46,7 +45,6 @@ class FormTemplateOut(BaseModel):
 
 
 class InspectionPayload(BaseModel):
-    organization_key: str = "default"
     template_id: int | None = None
     aeropuerto_id: int | None = None
     titulo: str = Field(min_length=2, max_length=200)
@@ -74,7 +72,6 @@ class InspectionOut(BaseModel):
 
 
 class CorrectiveActionPayload(BaseModel):
-    organization_key: str = "default"
     inspection_id: int | None = None
     incidente_id: int | None = None
     titulo: str = Field(min_length=2, max_length=200)
@@ -104,7 +101,6 @@ class CorrectiveActionOut(BaseModel):
 
 
 class TrainingCoursePayload(BaseModel):
-    organization_key: str = "default"
     nombre: str = Field(min_length=2, max_length=200)
     categoria: str | None = None
     modalidad: str | None = None
@@ -126,7 +122,6 @@ class TrainingCourseOut(BaseModel):
 
 
 class TrainingRecordPayload(BaseModel):
-    organization_key: str = "default"
     course_id: int
     user_id: str | None = None
     estado: str = "Pendiente"

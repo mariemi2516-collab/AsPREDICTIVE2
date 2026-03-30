@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime, timedelta
 from threading import Lock
@@ -102,6 +102,7 @@ def to_user_out(user: Usuario) -> UsuarioOut:
         nombre=user.nombre,
         email=user.email,
         rol=user.rol,
+        organization_key=user.organization_key,
         estado=user.estado,
         ultimo_login=user.ultimo_login,
         created_at=user.created_at,
@@ -172,7 +173,7 @@ def get_current_user(
 
     user = db.get(Usuario, user_id)
     if not user or not user.estado:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inválido")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario invÃ¡lido")
 
     return user
 
@@ -184,6 +185,15 @@ def require_roles(*allowed_roles: str):
         return current_user
 
     return dependency
+
+
+def get_user_organization_key(current_user: Usuario) -> str:
+    return (current_user.organization_key or "default").strip() or "default"
+
+
+def enforce_same_organization(current_user: Usuario, organization_key: str) -> None:
+    if organization_key != get_user_organization_key(current_user):
+        raise HTTPException(status_code=403, detail="No tienes permisos para operar sobre otra organizacion")
 
 
 def fetch_incidentes_with_relations(db: Session, limit: int, organization_key: str = "default") -> list[Incidente]:
@@ -270,7 +280,10 @@ def build_executive_report(db: Session, periodo_dias: int, organization_key: str
         )
         or 0
     )
-    usuarios_activos = db.scalar(select(func.count()).select_from(Usuario).where(Usuario.estado.is_(True))) or 0
+    usuarios_activos = (
+        db.scalar(select(func.count()).select_from(Usuario).where(Usuario.estado.is_(True), Usuario.organization_key == organization_key))
+        or 0
+    )
     aeropuertos_monitoreados = db.scalar(select(func.count()).select_from(Aeropuerto)) or 0
     acciones_auditadas_periodo = db.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.created_at >= cutoff)) or 0
     incidentes_auditados = (
@@ -331,6 +344,8 @@ def build_executive_report(db: Session, periodo_dias: int, organization_key: str
             "version": predictor.model_version,
             "registros_entrenamiento": int(predictor.bundle.get("training_rows", 0)),
             "accuracy": metricas_modelo.get("accuracy"),
+            "balanced_accuracy": metricas_modelo.get("balanced_accuracy"),
+            "macro_f1": metricas_modelo.get("macro_f1"),
         },
         resumen_operacional={
             "incidentes_periodo": len(incidentes_periodo),
@@ -420,26 +435,53 @@ def health() -> HealthResponse:
 
 
 @app.post("/auth/register", response_model=AuthResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def register(
+    payload: RegisterRequest,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> AuthResponse:
+    requested_role = payload.rol
     existing_user = db.scalar(select(Usuario).where(Usuario.email == payload.email))
     if existing_user:
         raise HTTPException(status_code=400, detail="Ya existe un usuario con ese correo")
+
+    first_user = db.scalar(select(Usuario.id).limit(1)) is None
+    if first_user and not settings.allow_self_registration:
+        raise HTTPException(status_code=403, detail="El alta inicial de usuarios requiere aprovisionamiento administrativo")
+
+    actor_user: Usuario | None = None
+    if not first_user:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=403, detail="El registro publico esta deshabilitado")
+        token = authorization.split(" ", 1)[1]
+        try:
+            actor_user_id = decode_access_token(token)
+        except ValueError as error:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+
+        actor_user = db.get(Usuario, actor_user_id)
+        if not actor_user or not actor_user.estado:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario invÃƒÂ¡lido")
+        if actor_user.rol not in {"administrador", "supervisor"}:
+            raise HTTPException(status_code=403, detail="No tienes permisos para crear usuarios")
 
     user = Usuario(
         nombre=payload.nombre,
         email=payload.email,
         password_hash=get_password_hash(payload.password),
-        rol=payload.rol,
+        rol="administrador" if first_user else requested_role,
+        organization_key=settings.initial_admin_organization_key if first_user else get_user_organization_key(actor_user),
         estado=True,
     )
     db.add(user)
     write_audit_log(
         db,
-        actor_user_id=user.id,
+        actor_user_id=actor_user.id if actor_user else user.id,
+        organization_key=user.organization_key,
         action="usuario_registrado",
         resource_type="usuario",
         resource_id=user.id,
-        details={"email": user.email, "rol": user.rol},
+        details={"email": user.email, "rol": user.rol, "requested_role": requested_role},
     )
     db.commit()
     db.refresh(user)
@@ -452,12 +494,13 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     user = db.scalar(select(Usuario).where(Usuario.email == payload.email))
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+        raise HTTPException(status_code=401, detail="Credenciales invÃ¡lidas")
 
     user.ultimo_login = datetime.utcnow()
     write_audit_log(
         db,
         actor_user_id=user.id,
+        organization_key=user.organization_key,
         action="inicio_sesion",
         resource_type="usuario",
         resource_id=user.id,
@@ -478,7 +521,7 @@ def me(current_user: Usuario = Depends(get_current_user)) -> UsuarioOut:
 def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(get_db)) -> dict[str, str]:
     user = db.scalar(select(Usuario).where(Usuario.email == payload.email))
     if not user:
-        return {"status": "ok", "message": "Si el correo existe, se generó una solicitud de recuperación"}
+        return {"status": "ok", "message": "Si el correo existe, se genero una solicitud de recuperacion"}
 
     token = secrets.token_urlsafe(32)
     reset = PasswordResetToken(
@@ -490,6 +533,7 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
     write_audit_log(
         db,
         actor_user_id=user.id,
+        organization_key=user.organization_key,
         action="solicitud_recuperacion_acceso",
         resource_type="password_reset",
         resource_id=user.id,
@@ -497,12 +541,13 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
     )
     db.commit()
 
-    return {
+    response = {
         "status": "ok",
-        "message": "Solicitud generada. En esta versión el token se devuelve para uso administrativo.",
-        "reset_token": token,
+        "message": "Solicitud generada. Si el usuario existe, el flujo de recuperacion quedo registrado para gestion segura.",
     }
-
+    if settings.expose_password_reset_token:
+        response["reset_token"] = token
+    return response
 
 @app.post("/auth/password-reset/confirm")
 def confirm_password_reset(payload: PasswordResetConfirm, db: Session = Depends(get_db)) -> dict[str, str]:
@@ -513,7 +558,7 @@ def confirm_password_reset(payload: PasswordResetConfirm, db: Session = Depends(
         )
     )
     if not reset or reset.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="Token inválido o expirado")
+        raise HTTPException(status_code=400, detail="Token invÃ¡lido o expirado")
 
     user = db.get(Usuario, reset.user_id)
     if not user:
@@ -524,13 +569,14 @@ def confirm_password_reset(payload: PasswordResetConfirm, db: Session = Depends(
     write_audit_log(
         db,
         actor_user_id=user.id,
+        organization_key=user.organization_key,
         action="recuperacion_acceso_confirmada",
         resource_type="usuario",
         resource_id=user.id,
         details={"email": user.email},
     )
     db.commit()
-    return {"status": "ok", "message": "Contraseña actualizada correctamente"}
+    return {"status": "ok", "message": "ContraseÃ±a actualizada correctamente"}
 
 
 @app.get("/catalogs/aeropuertos", response_model=list[CatalogAeropuertoOut])
@@ -584,11 +630,10 @@ def form_data(
 @app.get("/incidentes", response_model=list[IncidenteOut])
 def list_incidentes(
     limit: int = Query(default=50, ge=1, le=500),
-    organization_key: str = Query(default="default"),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[IncidenteOut]:
-    incidentes = fetch_incidentes_with_relations(db, limit, organization_key=organization_key)
+    incidentes = fetch_incidentes_with_relations(db, limit, organization_key=get_user_organization_key(current_user))
     return [to_incidente_out(incidente) for incidente in incidentes]
 
 
@@ -599,7 +644,7 @@ def create_incidente(
     db: Session = Depends(get_db),
 ) -> IncidenteOut:
     incidente = Incidente(
-        organization_key=payload.organization_key,
+        organization_key=get_user_organization_key(current_user),
         aeropuerto_id=payload.aeropuerto_id,
         tipo_incidente_id=payload.tipo_incidente_id,
         aeronave_id=payload.aeronave_id,
@@ -619,9 +664,10 @@ def create_incidente(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=incidente.organization_key,
         action="incidente_creado",
         resource_type="incidente",
-        details={"aeropuerto_id": payload.aeropuerto_id, "nivel_riesgo": payload.nivel_riesgo, "organization_key": payload.organization_key},
+        details={"aeropuerto_id": payload.aeropuerto_id, "nivel_riesgo": payload.nivel_riesgo, "organization_key": incidente.organization_key},
     )
     db.commit()
     db.refresh(incidente)
@@ -643,9 +689,9 @@ def update_incidente(
     incidente = db.get(Incidente, incidente_id)
     if not incidente:
         raise HTTPException(status_code=404, detail="Incidente no encontrado")
+    enforce_same_organization(current_user, incidente.organization_key)
 
     incidente.aeropuerto_id = payload.aeropuerto_id
-    incidente.organization_key = payload.organization_key
     incidente.tipo_incidente_id = payload.tipo_incidente_id
     incidente.aeronave_id = payload.aeronave_id
     incidente.fecha_hora = payload.fecha_hora
@@ -661,10 +707,11 @@ def update_incidente(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=incidente.organization_key,
         action="incidente_actualizado",
         resource_type="incidente",
         resource_id=str(incidente_id),
-        details={"nivel_riesgo": payload.nivel_riesgo, "organization_key": payload.organization_key},
+        details={"nivel_riesgo": payload.nivel_riesgo, "organization_key": incidente.organization_key},
     )
     db.commit()
 
@@ -680,11 +727,10 @@ def update_incidente(
 def list_alertas(
     estado: str | None = Query(default=None),
     limit: int = Query(default=10, ge=1, le=200),
-    organization_key: str = Query(default="default"),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[AlertaOut]:
-    alertas = fetch_alertas_with_relations(db, estado, limit, organization_key=organization_key)
+    alertas = fetch_alertas_with_relations(db, estado, limit, organization_key=get_user_organization_key(current_user))
     return [to_alerta_out(alerta) for alerta in alertas]
 
 
@@ -695,7 +741,7 @@ def create_alerta(
     db: Session = Depends(get_db),
 ) -> AlertaOut:
     alerta = Alerta(
-        organization_key=payload.organization_key,
+        organization_key=get_user_organization_key(current_user),
         aeropuerto_id=payload.aeropuerto_id,
         tipo_alerta=payload.tipo_alerta,
         nivel_criticidad=payload.nivel_criticidad,
@@ -707,9 +753,10 @@ def create_alerta(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=alerta.organization_key,
         action="alerta_creada",
         resource_type="alerta",
-        details={"tipo_alerta": payload.tipo_alerta, "nivel_criticidad": payload.nivel_criticidad, "organization_key": payload.organization_key},
+        details={"tipo_alerta": payload.tipo_alerta, "nivel_criticidad": payload.nivel_criticidad, "organization_key": alerta.organization_key},
     )
     db.commit()
     db.refresh(alerta)
@@ -726,6 +773,7 @@ def resolve_alerta(
     alerta = db.get(Alerta, alerta_id)
     if not alerta:
         raise HTTPException(status_code=404, detail="Alerta no encontrada")
+    enforce_same_organization(current_user, alerta.organization_key)
 
     alerta.estado = "Resuelta"
     alerta.atendido_por = current_user.id
@@ -733,6 +781,7 @@ def resolve_alerta(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=alerta.organization_key,
         action="alerta_resuelta",
         resource_type="alerta",
         resource_id=str(alerta_id),
@@ -746,10 +795,10 @@ def resolve_alerta(
 
 @app.get("/dashboard/summary", response_model=DashboardSummaryResponse)
 def dashboard_summary(
-    organization_key: str = Query(default="default"),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DashboardSummaryResponse:
+    organization_key = get_user_organization_key(current_user)
     recent_incidentes = fetch_incidentes_with_relations(db, 5, organization_key=organization_key)
     all_incidentes = fetch_incidentes_with_relations(db, 200, organization_key=organization_key)
     alertas = fetch_alertas_with_relations(db, "Pendiente", 10, organization_key=organization_key)
@@ -785,6 +834,8 @@ def model_metrics(_: Usuario = Depends(get_current_user)) -> ModelMetricsOut:
         model_version=predictor.model_version,
         training_rows=int(predictor.bundle.get("training_rows", 0)),
         accuracy=metrics.get("accuracy"),
+        balanced_accuracy=metrics.get("balanced_accuracy"),
+        macro_f1=metrics.get("macro_f1"),
         samples_train=metrics.get("samples_train"),
         samples_test=metrics.get("samples_test"),
     )
@@ -802,24 +853,31 @@ def model_traceability(_: Usuario = Depends(require_roles("administrador", "supe
 @app.get("/reports/executive", response_model=ExecutiveReportResponse)
 def executive_report(
     periodo_dias: int = Query(default=90, ge=7, le=365),
-    organization_key: str = Query(default="default"),
-    _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
+    current_user: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
     db: Session = Depends(get_db),
 ) -> ExecutiveReportResponse:
-    return build_executive_report(db, periodo_dias, organization_key=organization_key)
+    return build_executive_report(db, periodo_dias, organization_key=get_user_organization_key(current_user))
 
 
 @app.get("/audit-logs", response_model=list[AuditLogOut])
 def list_audit_logs(
     limit: int = Query(default=100, ge=1, le=500),
-    _: Usuario = Depends(require_roles("administrador", "supervisor")),
+    current_user: Usuario = Depends(require_roles("administrador", "supervisor")),
     db: Session = Depends(get_db),
 ) -> list[AuditLogOut]:
-    logs = list(db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)))
+    logs = list(
+        db.scalars(
+            select(AuditLog)
+            .where(AuditLog.organization_key == get_user_organization_key(current_user))
+            .order_by(AuditLog.created_at.desc())
+            .limit(limit)
+        )
+    )
     return [
         AuditLogOut(
             id=log.id,
             actor_user_id=log.actor_user_id,
+            organization_key=log.organization_key,
             action=log.action,
             resource_type=log.resource_type,
             resource_id=log.resource_id,
@@ -871,3 +929,4 @@ def train_model(
         "model_version": predictor.model_version,
         "metrics": bundle.get("metrics", {}),
     }
+

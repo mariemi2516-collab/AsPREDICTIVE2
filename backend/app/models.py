@@ -17,6 +17,7 @@ class Usuario(Base):
     email: Mapped[str] = mapped_column(String(150), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     rol: Mapped[str] = mapped_column(String(50))
+    organization_key: Mapped[str] = mapped_column(String(100), default="default", index=True)
     estado: Mapped[bool] = mapped_column(Boolean, default=True)
     ultimo_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -27,6 +28,7 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     actor_user_id: Mapped[str | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True, index=True)
+    organization_key: Mapped[str] = mapped_column(String(100), default="default", index=True)
     action: Mapped[str] = mapped_column(String(100), index=True)
     resource_type: Mapped[str] = mapped_column(String(100), index=True)
     resource_id: Mapped[str | None] = mapped_column(String(100), nullable=True)

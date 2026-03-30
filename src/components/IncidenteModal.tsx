@@ -20,7 +20,7 @@ const FASES_VUELO = [
   'Estacionamiento',
 ];
 
-const NIVELES_RIESGO = ['Bajo', 'Medio', 'Alto', 'Critico'];
+const NIVELES_RIESGO = ['Bajo', 'Medio', 'Alto', 'Crítico'];
 const CONDICIONES_METEOROLOGICAS = ['VMC', 'IMC', 'Lluvia', 'Tormenta', 'Niebla', 'Viento fuerte', 'Ceniza', 'Nieve'];
 const CONDICIONES_LUZ = ['Dia', 'Noche', 'Crepusculo', 'Amanecer'];
 

@@ -68,6 +68,15 @@ def require_roles(*allowed_roles: str):
     return dependency
 
 
+def get_user_organization_key(current_user: Usuario) -> str:
+    return (current_user.organization_key or "default").strip() or "default"
+
+
+def enforce_same_organization(current_user: Usuario, organization_key: str) -> None:
+    if organization_key != get_user_organization_key(current_user):
+        raise HTTPException(status_code=403, detail="No tienes permisos para operar sobre otra organizacion")
+
+
 def to_template_out(template: FormTemplate, fields: list[FormTemplateField]) -> FormTemplateOut:
     sorted_fields = sorted(fields, key=lambda item: item.orden)
     return FormTemplateOut(
@@ -286,13 +295,14 @@ def build_regulatory_lines(
 
 @router.get("/form-templates", response_model=list[FormTemplateOut])
 def list_form_templates(
-    organization_key: str | None = Query(default=None),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[FormTemplateOut]:
-    statement = select(FormTemplate).order_by(FormTemplate.modulo.asc(), FormTemplate.nombre.asc())
-    if organization_key:
-        statement = statement.where(FormTemplate.organization_key == organization_key)
+    statement = (
+        select(FormTemplate)
+        .where(FormTemplate.organization_key == get_user_organization_key(current_user))
+        .order_by(FormTemplate.modulo.asc(), FormTemplate.nombre.asc())
+    )
     templates = list(db.scalars(statement))
     fields = list(db.scalars(select(FormTemplateField)))
     fields_by_template: dict[int, list[FormTemplateField]] = {}
@@ -308,7 +318,7 @@ def create_form_template(
     db: Session = Depends(get_db),
 ) -> FormTemplateOut:
     template = FormTemplate(
-        organization_key=payload.organization_key,
+        organization_key=get_user_organization_key(current_user),
         nombre=payload.nombre,
         modulo=payload.modulo,
         version=payload.version,
@@ -335,10 +345,11 @@ def create_form_template(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=template.organization_key,
         action="form_template_creado",
         resource_type="form_template",
         resource_id=str(template.id),
-        details={"organization_key": payload.organization_key, "modulo": payload.modulo, "nombre": payload.nombre},
+        details={"organization_key": template.organization_key, "modulo": payload.modulo, "nombre": payload.nombre},
     )
     db.commit()
     return to_template_out(template, created_fields)
@@ -346,13 +357,14 @@ def create_form_template(
 
 @router.get("/inspections", response_model=list[InspectionOut])
 def list_inspections(
-    organization_key: str | None = Query(default=None),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[InspectionOut]:
-    statement = select(Inspection).order_by(Inspection.created_at.desc())
-    if organization_key:
-        statement = statement.where(Inspection.organization_key == organization_key)
+    statement = (
+        select(Inspection)
+        .where(Inspection.organization_key == get_user_organization_key(current_user))
+        .order_by(Inspection.created_at.desc())
+    )
     return list(db.scalars(statement))
 
 
@@ -363,7 +375,7 @@ def create_inspection(
     db: Session = Depends(get_db),
 ) -> InspectionOut:
     inspection = Inspection(
-        organization_key=payload.organization_key,
+        organization_key=get_user_organization_key(current_user),
         template_id=payload.template_id,
         aeropuerto_id=payload.aeropuerto_id,
         titulo=payload.titulo,
@@ -377,7 +389,7 @@ def create_inspection(
     db.add(inspection)
     create_notification(
         db,
-        organization_key=payload.organization_key,
+        organization_key=inspection.organization_key,
         tipo="inspection_created",
         titulo="Nueva inspeccion programada",
         mensaje=f"Se registro la inspeccion '{payload.titulo}' con estado {payload.estado}.",
@@ -388,10 +400,11 @@ def create_inspection(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=inspection.organization_key,
         action="inspeccion_creada",
         resource_type="inspection",
         resource_id=None,
-        details={"organization_key": payload.organization_key, "titulo": payload.titulo, "estado": payload.estado},
+        details={"organization_key": inspection.organization_key, "titulo": payload.titulo, "estado": payload.estado},
     )
     db.commit()
     db.refresh(inspection)
@@ -407,6 +420,7 @@ def delete_inspection(
     inspection = db.get(Inspection, inspection_id)
     if not inspection:
         raise HTTPException(status_code=404, detail="Inspeccion no encontrada")
+    enforce_same_organization(current_user, inspection.organization_key)
 
     linked_actions = list(db.scalars(select(CorrectiveAction).where(CorrectiveAction.inspection_id == inspection_id)))
     for action in linked_actions:
@@ -424,6 +438,7 @@ def delete_inspection(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=inspection.organization_key,
         action="inspeccion_eliminada",
         resource_type="inspection",
         resource_id=str(inspection_id),
@@ -435,12 +450,12 @@ def delete_inspection(
 
 @router.delete("/inspections", response_model=BulkOperationResultOut)
 def delete_test_inspections(
-    organization_key: str = Query(default="default"),
     title: str | None = Query(default=None),
     only_pending: bool = Query(default=True),
     current_user: Usuario = Depends(require_roles("administrador", "supervisor")),
     db: Session = Depends(get_db),
 ) -> BulkOperationResultOut:
+    organization_key = get_user_organization_key(current_user)
     statement = select(Inspection).where(Inspection.organization_key == organization_key)
     if title:
         statement = statement.where(Inspection.titulo == title)
@@ -474,6 +489,7 @@ def delete_test_inspections(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=organization_key,
         action="inspecciones_eliminadas",
         resource_type="inspection",
         details={
@@ -492,13 +508,14 @@ def delete_test_inspections(
 
 @router.get("/corrective-actions", response_model=list[CorrectiveActionOut])
 def list_corrective_actions(
-    organization_key: str | None = Query(default=None),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[CorrectiveActionOut]:
-    statement = select(CorrectiveAction).order_by(CorrectiveAction.created_at.desc())
-    if organization_key:
-        statement = statement.where(CorrectiveAction.organization_key == organization_key)
+    statement = (
+        select(CorrectiveAction)
+        .where(CorrectiveAction.organization_key == get_user_organization_key(current_user))
+        .order_by(CorrectiveAction.created_at.desc())
+    )
     return list(db.scalars(statement))
 
 
@@ -509,7 +526,7 @@ def create_corrective_action(
     db: Session = Depends(get_db),
 ) -> CorrectiveActionOut:
     action = CorrectiveAction(
-        organization_key=payload.organization_key,
+        organization_key=get_user_organization_key(current_user),
         inspection_id=payload.inspection_id,
         incidente_id=payload.incidente_id,
         titulo=payload.titulo,
@@ -522,7 +539,7 @@ def create_corrective_action(
     db.add(action)
     create_notification(
         db,
-        organization_key=payload.organization_key,
+        organization_key=action.organization_key,
         tipo="corrective_action_created",
         titulo="Nueva accion correctiva",
         mensaje=f"Se creo la accion correctiva '{payload.titulo}' con prioridad {payload.prioridad}.",
@@ -533,9 +550,10 @@ def create_corrective_action(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=action.organization_key,
         action="accion_correctiva_creada",
         resource_type="corrective_action",
-        details={"organization_key": payload.organization_key, "titulo": payload.titulo, "prioridad": payload.prioridad},
+        details={"organization_key": action.organization_key, "titulo": payload.titulo, "prioridad": payload.prioridad},
     )
     db.commit()
     db.refresh(action)
@@ -552,6 +570,7 @@ def update_corrective_action_status(
     action = db.get(CorrectiveAction, action_id)
     if not action:
         raise HTTPException(status_code=404, detail="Accion correctiva no encontrada")
+    enforce_same_organization(current_user, action.organization_key)
     action.estado = payload.estado
     action.updated_at = datetime.utcnow()
     create_notification(
@@ -568,6 +587,7 @@ def update_corrective_action_status(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=action.organization_key,
         action="accion_correctiva_actualizada",
         resource_type="corrective_action",
         resource_id=str(action_id),
@@ -580,13 +600,14 @@ def update_corrective_action_status(
 
 @router.get("/training/courses", response_model=list[TrainingCourseOut])
 def list_training_courses(
-    organization_key: str | None = Query(default=None),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[TrainingCourseOut]:
-    statement = select(TrainingCourse).order_by(TrainingCourse.nombre.asc())
-    if organization_key:
-        statement = statement.where(TrainingCourse.organization_key == organization_key)
+    statement = (
+        select(TrainingCourse)
+        .where(TrainingCourse.organization_key == get_user_organization_key(current_user))
+        .order_by(TrainingCourse.nombre.asc())
+    )
     courses = list(db.scalars(statement))
     return [
         TrainingCourseOut(
@@ -611,7 +632,7 @@ def create_training_course(
     db: Session = Depends(get_db),
 ) -> TrainingCourseOut:
     course = TrainingCourse(
-        organization_key=payload.organization_key,
+        organization_key=get_user_organization_key(current_user),
         nombre=payload.nombre,
         categoria=payload.categoria,
         modalidad=payload.modalidad,
@@ -622,7 +643,7 @@ def create_training_course(
     db.add(course)
     create_notification(
         db,
-        organization_key=payload.organization_key,
+        organization_key=course.organization_key,
         tipo="training_course_created",
         titulo="Nuevo curso disponible",
         mensaje=f"Se creo el curso '{payload.nombre}' para gestion institucional.",
@@ -633,9 +654,10 @@ def create_training_course(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=course.organization_key,
         action="curso_capacitacion_creado",
         resource_type="training_course",
-        details={"organization_key": payload.organization_key, "nombre": payload.nombre},
+        details={"organization_key": course.organization_key, "nombre": payload.nombre},
     )
     db.commit()
     db.refresh(course)
@@ -654,13 +676,14 @@ def create_training_course(
 
 @router.get("/training/records", response_model=list[TrainingRecordOut])
 def list_training_records(
-    organization_key: str | None = Query(default=None),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[TrainingRecordOut]:
-    statement = select(TrainingRecord).order_by(TrainingRecord.created_at.desc())
-    if organization_key:
-        statement = statement.where(TrainingRecord.organization_key == organization_key)
+    statement = (
+        select(TrainingRecord)
+        .where(TrainingRecord.organization_key == get_user_organization_key(current_user))
+        .order_by(TrainingRecord.created_at.desc())
+    )
     return list(db.scalars(statement))
 
 
@@ -671,7 +694,7 @@ def create_training_record(
     db: Session = Depends(get_db),
 ) -> TrainingRecordOut:
     record = TrainingRecord(
-        organization_key=payload.organization_key,
+        organization_key=get_user_organization_key(current_user),
         course_id=payload.course_id,
         user_id=payload.user_id,
         estado=payload.estado,
@@ -681,7 +704,7 @@ def create_training_record(
     db.add(record)
     create_notification(
         db,
-        organization_key=payload.organization_key,
+        organization_key=record.organization_key,
         tipo="training_assigned",
         titulo="Capacitacion asignada",
         mensaje=f"Se asigno el curso {payload.course_id} con estado {payload.estado}.",
@@ -692,9 +715,10 @@ def create_training_record(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=record.organization_key,
         action="asignacion_capacitacion_creada",
         resource_type="training_record",
-        details={"organization_key": payload.organization_key, "course_id": payload.course_id, "estado": payload.estado},
+        details={"organization_key": record.organization_key, "course_id": payload.course_id, "estado": payload.estado},
     )
     db.commit()
     db.refresh(record)
@@ -711,6 +735,7 @@ def complete_training_record(
     record = db.get(TrainingRecord, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Registro de capacitacion no encontrado")
+    enforce_same_organization(current_user, record.organization_key)
     record.estado = "Completado"
     record.fecha_completado = datetime.utcnow()
     record.puntaje = payload.puntaje
@@ -729,6 +754,7 @@ def complete_training_record(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=record.organization_key,
         action="capacitacion_completada",
         resource_type="training_record",
         resource_id=str(record_id),
@@ -741,14 +767,17 @@ def complete_training_record(
 
 @router.get("/notifications", response_model=list[NotificationEventOut])
 def list_notifications(
-    organization_key: str | None = Query(default=None),
-    _: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[NotificationEventOut]:
-    ensure_operational_notifications(db, organization_key or "default")
-    statement = select(NotificationEvent).order_by(NotificationEvent.created_at.desc()).limit(100)
-    if organization_key:
-        statement = statement.where(NotificationEvent.organization_key == organization_key)
+    organization_key = get_user_organization_key(current_user)
+    ensure_operational_notifications(db, organization_key)
+    statement = (
+        select(NotificationEvent)
+        .where(NotificationEvent.organization_key == organization_key)
+        .order_by(NotificationEvent.created_at.desc())
+        .limit(100)
+    )
     return list(db.scalars(statement))
 
 
@@ -762,11 +791,13 @@ def mark_notification_read(
     notification = db.get(NotificationEvent, notification_id)
     if not notification:
         raise HTTPException(status_code=404, detail="Notificacion no encontrada")
+    enforce_same_organization(current_user, notification.organization_key)
     notification.estado = payload.estado
     notification.read_at = datetime.utcnow()
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=notification.organization_key,
         action="notificacion_leida",
         resource_type="notification_event",
         resource_id=str(notification_id),
@@ -779,10 +810,10 @@ def mark_notification_read(
 
 @router.post("/notifications/read-all", response_model=BulkOperationResultOut)
 def mark_all_notifications_read(
-    organization_key: str = Query(default="default"),
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BulkOperationResultOut:
+    organization_key = get_user_organization_key(current_user)
     notifications = list(
         db.scalars(
             select(NotificationEvent).where(
@@ -798,6 +829,7 @@ def mark_all_notifications_read(
     write_audit_log(
         db,
         actor_user_id=current_user.id,
+        organization_key=organization_key,
         action="notificaciones_leidas_masivo",
         resource_type="notification_event",
         details={"organization_key": organization_key, "cantidad": len(notifications)},
@@ -811,10 +843,10 @@ def mark_all_notifications_read(
 
 @router.get("/exports/regulatory", response_model=RegulatoryExportOut)
 def export_regulatory_report(
-    organization_key: str = Query(default="default"),
-    _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
+    current_user: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
     db: Session = Depends(get_db),
 ) -> RegulatoryExportOut:
+    organization_key = get_user_organization_key(current_user)
     incidents = list(
         db.scalars(
             select(Incidente).where(Incidente.organization_key == organization_key).order_by(Incidente.fecha_hora.desc()).limit(10)
@@ -842,10 +874,10 @@ def export_regulatory_report(
 
 @router.get("/exports/regulatory/pdf")
 def export_regulatory_report_pdf(
-    organization_key: str = Query(default="default"),
-    _: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
+    current_user: Usuario = Depends(require_roles("administrador", "supervisor", "analista")),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
+    organization_key = get_user_organization_key(current_user)
     incidents = list(
         db.scalars(
             select(Incidente).where(Incidente.organization_key == organization_key).order_by(Incidente.fecha_hora.desc()).limit(10)

@@ -15,6 +15,7 @@ class UsuarioOut(BaseModel):
     nombre: str
     email: str
     rol: RolUsuario
+    organization_key: str
     estado: bool
     ultimo_login: datetime | None = None
     created_at: datetime
@@ -27,7 +28,7 @@ class LoginRequest(BaseModel):
 
 class RegisterRequest(LoginRequest):
     nombre: str = Field(min_length=2, max_length=100)
-    rol: RolUsuario
+    rol: RolUsuario = "inspector"
 
 
 class AuthResponse(BaseModel):
@@ -47,6 +48,7 @@ class PasswordResetConfirm(BaseModel):
 class AuditLogOut(BaseModel):
     id: int
     actor_user_id: str | None = None
+    organization_key: str
     action: str
     resource_type: str
     resource_id: str | None = None
@@ -58,6 +60,8 @@ class ModelMetricsOut(BaseModel):
     model_version: str
     training_rows: int
     accuracy: float | None = None
+    balanced_accuracy: float | None = None
+    macro_f1: float | None = None
     samples_train: int | None = None
     samples_test: int | None = None
 
@@ -115,7 +119,6 @@ class RelatedAeronaveOut(BaseModel):
 
 
 class IncidentePayload(BaseModel):
-    organization_key: str = "default"
     aeropuerto_id: int | None = None
     tipo_incidente_id: int | None = None
     aeronave_id: int | None = None
@@ -133,7 +136,7 @@ class IncidentePayload(BaseModel):
 
 class IncidenteOut(BaseModel):
     id: int
-    organization_key: str = "default"
+    organization_key: str
     aeropuerto_id: int | None = None
     pista_id: int | None = None
     aeronave_id: int | None = None
@@ -156,7 +159,6 @@ class IncidenteOut(BaseModel):
 
 
 class AlertaCreate(BaseModel):
-    organization_key: str = "default"
     aeropuerto_id: int | None = None
     tipo_alerta: str
     nivel_criticidad: str
@@ -171,7 +173,7 @@ class RelatedAlertaAeropuertoOut(BaseModel):
 
 class AlertaOut(BaseModel):
     id: int
-    organization_key: str = "default"
+    organization_key: str
     aeropuerto_id: int | None = None
     fecha_generacion: datetime
     tipo_alerta: str | None = None
@@ -214,6 +216,8 @@ class ReportModelState(BaseModel):
     version: str
     registros_entrenamiento: int
     accuracy: float | None = None
+    balanced_accuracy: float | None = None
+    macro_f1: float | None = None
 
 
 class ReportOperationalSummary(BaseModel):

@@ -44,7 +44,7 @@ async function generarAlertasPredictivas() {
       await api.createAlerta({
         tipo_alerta: 'Riesgo Predictivo',
         mensaje,
-        nivel_criticidad: pred.score > 85 ? 'Critico' : 'Alta',
+        nivel_criticidad: pred.score > 85 ? 'Crítico' : 'Alta',
         estado: 'Pendiente',
         score_predictivo: pred.score,
         aeropuerto_id: incidente.aeropuerto_id,
@@ -55,7 +55,6 @@ async function generarAlertasPredictivas() {
 
 function getRiesgoColor(nivel: string | null) {
   switch (nivel) {
-    case 'Critico':
     case 'Crítico':
       return 'bg-red-100 text-red-800 border-red-200';
     case 'Alto':

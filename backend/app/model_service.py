@@ -18,7 +18,7 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, classification_report, f1_score
 from sklearn.exceptions import ConvergenceWarning
 
 from .schemas import IncidentePayload, NivelRiesgo
@@ -37,10 +37,28 @@ JST_EVENT_CODE_AUDIT_PATH = PROJECT_ROOT / "data" / "processed" / "jst_event_cod
 RISK_ORDER: list[NivelRiesgo] = ["Bajo", "Medio", "Alto", "Crítico"]
 RISK_WEIGHTS = np.array([25.0, 50.0, 75.0, 100.0])
 MAX_SYNCHRONOUS_TRAINING_ROWS = 4000
+RISK_LABEL_ALIASES = {
+    "bajo": "Bajo",
+    "medio": "Medio",
+    "alto": "Alto",
+    "critico": "Crítico",
+    "crítico": "Crítico",
+    "crã­tico": "Crítico",
+    "crĂ­tico": "Crítico",
+}
 
 
 def _normalize_text(value: str | None) -> str:
     return (value or "").strip().lower()
+
+
+def normalize_risk_label(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized_value = str(value).strip()
+    if not normalized_value:
+        return None
+    return RISK_LABEL_ALIASES.get(normalized_value.lower(), normalized_value)
 
 
 def _safe_isoformat(timestamp: float | None) -> str | None:
@@ -84,7 +102,7 @@ def _file_metadata(path: Path, label: str, source_kind: str) -> dict[str, Any]:
 
 
 def _label_distribution(rows: list[dict[str, Any]]) -> dict[str, int]:
-    labels = [str(row.get("nivel_riesgo")) for row in rows if row.get("nivel_riesgo")]
+    labels = [normalize_risk_label(row.get("nivel_riesgo")) for row in rows if normalize_risk_label(row.get("nivel_riesgo"))]
     if not labels:
         return {}
     series = pd.Series(labels)
@@ -104,6 +122,16 @@ def _field_coverage(rows: list[dict[str, Any]], fields: list[str]) -> dict[str, 
         present = values.notna() & values.astype(str).str.strip().ne("")
         coverage[field] = round(float(present.mean()), 4)
     return coverage
+
+
+def _unknown_label_summary(rows: list[dict[str, Any]]) -> dict[str, int]:
+    unknown_labels: dict[str, int] = {}
+    for row in rows:
+        normalized_label = normalize_risk_label(row.get("nivel_riesgo"))
+        if not normalized_label or normalized_label in RISK_ORDER:
+            continue
+        unknown_labels[normalized_label] = unknown_labels.get(normalized_label, 0) + 1
+    return dict(sorted(unknown_labels.items(), key=lambda item: (-item[1], item[0])))
 
 
 def _jst_traceability_summary() -> dict[str, Any]:
@@ -161,6 +189,7 @@ def build_training_trace(
         "training_rows_total": len(training_rows),
         "postgres_rows_used": len(postgres_rows),
         "risk_label_distribution": _label_distribution(training_rows),
+        "unknown_risk_labels": _unknown_label_summary(training_rows),
         "feature_coverage": _field_coverage(training_rows, feature_fields),
         "sources": [
             _file_metadata(NTSB_TRAINING_PATH, "ntsb_training_base", "csv"),
@@ -497,7 +526,7 @@ def load_ntsb_training_rows(path: Path = NTSB_TRAINING_PATH) -> list[dict[str, A
                 "techo_nubes_ft": row.get("techo_nubes_ft"),
                 "intensidad_precipitacion": row.get("intensidad_precipitacion"),
                 "fecha_hora": _combine_fecha_hora(row.get("fecha"), row.get("hora")),
-                "nivel_riesgo": row.get("nivel_riesgo"),
+                "nivel_riesgo": normalize_risk_label(row.get("nivel_riesgo")),
             }
         )
 
@@ -528,7 +557,7 @@ def load_jst_training_rows(path: Path = JST_TRAINING_PATH) -> list[dict[str, Any
                 "visibilidad_millas": row.get("visibilidad_millas"),
                 "viento_kt": row.get("viento_kt"),
                 "fecha_hora": row.get("fecha_hora"),
-                "nivel_riesgo": row.get("nivel_riesgo"),
+                "nivel_riesgo": normalize_risk_label(row.get("nivel_riesgo")),
             }
         )
 
@@ -573,12 +602,55 @@ def _combine_fecha_hora(fecha: Any, hora: Any) -> str | None:
     return fecha_ts.isoformat()
 
 
+def build_train_test_split(
+    frame: pd.DataFrame,
+    target: list[str],
+    raw_rows: list[dict[str, Any]],
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str], list[str], dict[str, Any]]:
+    timestamps = pd.to_datetime([row.get("fecha_hora") for row in raw_rows], errors="coerce", utc=True)
+    temporal_frame = frame.copy()
+    temporal_frame["__target__"] = target
+    temporal_frame["__timestamp__"] = timestamps
+    valid_temporal_rows = temporal_frame["__timestamp__"].notna().sum()
+
+    if valid_temporal_rows >= max(12, int(len(temporal_frame) * 0.6)):
+        temporal_frame = temporal_frame.sort_values("__timestamp__").reset_index(drop=True)
+        split_index = max(1, int(len(temporal_frame) * 0.8))
+        if split_index >= len(temporal_frame):
+            split_index = len(temporal_frame) - 1
+
+        train_frame = temporal_frame.iloc[:split_index]
+        test_frame = temporal_frame.iloc[split_index:]
+        if not test_frame.empty and len(set(train_frame["__target__"])) >= 2 and len(set(test_frame["__target__"])) >= 2:
+            return (
+                train_frame.drop(columns=["__target__", "__timestamp__"]),
+                test_frame.drop(columns=["__target__", "__timestamp__"]),
+                train_frame["__target__"].tolist(),
+                test_frame["__target__"].tolist(),
+                {
+                    "strategy": "temporal_holdout",
+                    "samples_with_timestamp": int(valid_temporal_rows),
+                    "samples_without_timestamp": int(len(temporal_frame) - valid_temporal_rows),
+                },
+            )
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        frame,
+        target,
+        test_size=0.2,
+        random_state=42,
+        stratify=target,
+    )
+    return x_train, x_test, y_train, y_test, {"strategy": "stratified_random_holdout"}
+
+
 def train_bundle(
     rows: list[dict[str, Any]],
     source_name: str,
     traceability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    labeled_rows = [row for row in rows if row.get("nivel_riesgo") in RISK_ORDER]
+    normalized_rows = [{**row, "nivel_riesgo": normalize_risk_label(row.get("nivel_riesgo"))} for row in rows]
+    labeled_rows = [row for row in normalized_rows if row.get("nivel_riesgo") in RISK_ORDER]
     if len(labeled_rows) < 12:
         raise ValueError("Se requieren al menos 12 registros etiquetados para entrenar el modelo.")
 
@@ -588,22 +660,19 @@ def train_bundle(
     target = [row["nivel_riesgo"] for row in training_rows]
 
     pipeline = create_model_pipeline()
-    x_train, x_test, y_train, y_test = train_test_split(
-        frame,
-        target,
-        test_size=0.2,
-        random_state=42,
-        stratify=target,
-    )
+    x_train, x_test, y_train, y_test, split_info = build_train_test_split(frame, target, training_rows)
     with warnings.catch_warnings(record=True) as caught_warnings:
         warnings.simplefilter("always", ConvergenceWarning)
         pipeline.fit(x_train, y_train)
     predictions = pipeline.predict(x_test)
     accuracy = float(accuracy_score(y_test, predictions))
+    balanced_accuracy = float(balanced_accuracy_score(y_test, predictions))
+    macro_f1 = float(f1_score(y_test, predictions, average="macro", zero_division=0))
     report = classification_report(y_test, predictions, output_dict=True, zero_division=0)
     convergence_warnings = [str(item.message) for item in caught_warnings if issubclass(item.category, ConvergenceWarning)]
-    traceability_payload = traceability or build_training_trace(labeled_rows, source_name=source_name)
+    traceability_payload = traceability or build_training_trace(normalized_rows, source_name=source_name)
     traceability_payload["sampling"] = sampling_info
+    traceability_payload["validation"] = split_info
 
     return {
         "pipeline": pipeline,
@@ -614,9 +683,12 @@ def train_bundle(
         "traceability": traceability_payload,
         "metrics": {
             "accuracy": accuracy,
+            "balanced_accuracy": balanced_accuracy,
+            "macro_f1": macro_f1,
             "samples_train": len(x_train),
             "samples_test": len(x_test),
             "classification_report": report,
+            "validation_strategy": split_info.get("strategy"),
             "converged": not convergence_warnings,
             "warnings": convergence_warnings,
         },

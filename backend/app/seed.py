@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .config import settings
 from .models import Aeronave, Aeropuerto, TipoIncidente, Usuario
 from .security import get_password_hash
 
@@ -178,13 +179,14 @@ def _sync_incident_types(db: Session) -> None:
 
 
 def seed_initial_data(db: Session) -> None:
-    if not db.scalar(select(Usuario.id).limit(1)):
+    if not db.scalar(select(Usuario.id).limit(1)) and settings.initial_admin_email and settings.initial_admin_password:
         db.add(
             Usuario(
-                nombre="Administrador Demo",
-                email="admin@aspredictive.local",
-                password_hash=get_password_hash("Admin12345"),
+                nombre=settings.initial_admin_name,
+                email=settings.initial_admin_email,
+                password_hash=get_password_hash(settings.initial_admin_password),
                 rol="administrador",
+                organization_key=settings.initial_admin_organization_key,
                 estado=True,
             )
         )

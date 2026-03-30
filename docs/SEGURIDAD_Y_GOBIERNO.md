@@ -2,28 +2,37 @@
 
 ## Roles
 
-- `administrador`: alta de usuarios, entrenamiento, auditoría, gestión integral
-- `supervisor`: lectura integral, resolución de alertas, auditoría
-- `inspector`: gestión de incidentes y resolución de alertas
-- `analista`: análisis, entrenamiento del modelo, lectura operativa
+- `administrador`: alta de usuarios de su organizacion, entrenamiento, auditoria, gestion integral
+- `supervisor`: lectura integral, resolucion de alertas, auditoria y alta controlada de usuarios de su organizacion
+- `inspector`: gestion de incidentes y resolucion de alertas
+- `analista`: analisis, entrenamiento del modelo, lectura operativa
 
 ## Controles implementados
 
-- JWT para sesión
-- Verificación de roles en endpoints sensibles
-- Auditoría de:
+- JWT para sesion
+- verificacion de roles en endpoints sensibles
+- aislamiento por `organization_key` derivado del usuario autenticado
+- registro publico deshabilitado por defecto
+- auditoria de:
   - registro de usuario
-  - inicio de sesión
-  - creación y actualización de incidentes
-  - creación y resolución de alertas
-  - recuperación de acceso
+  - inicio de sesion
+  - creacion y actualizacion de incidentes
+  - creacion y resolucion de alertas
+  - recuperacion de acceso
 
-## Recuperación de acceso
+## Altas de usuario
+
+- El alta inicial requiere aprovisionar `INITIAL_ADMIN_EMAIL` y `INITIAL_ADMIN_PASSWORD`.
+- El registro publico queda deshabilitado por defecto.
+- La creacion posterior de usuarios debe realizarla un `administrador` o `supervisor` autenticado dentro de su propia organizacion.
+
+## Recuperacion de acceso
 
 Endpoints:
 
 - `POST /auth/password-reset/request`
 - `POST /auth/password-reset/confirm`
 
-En esta versión, el token se devuelve para uso administrativo o controlado.
-Para producción comercial se recomienda integrarlo con correo corporativo.
+En configuracion segura el token no se devuelve al cliente.
+Solo puede exponerse si `EXPOSE_PASSWORD_RESET_TOKEN=true` en un entorno controlado.
+Para produccion comercial se recomienda integrarlo con correo corporativo o mesa de ayuda interna.

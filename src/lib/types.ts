@@ -5,6 +5,7 @@ export interface Usuario {
   nombre: string;
   email: string;
   rol: RolUsuario;
+  organization_key: string;
   estado: boolean;
   ultimo_login: string | null;
   created_at: string;

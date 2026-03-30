@@ -56,12 +56,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `GET /audit-logs`
 - `GET /reports/executive`
 
-## 6. Usuario demo inicial
+## 6. Usuario inicial
 
-Si la base está vacía, al arrancar se crea automáticamente:
+Si la base esta vacia, solo se crea un administrador inicial cuando configuras:
 
-- `admin@aspredictive.local`
-- `Admin12345`
+- `INITIAL_ADMIN_EMAIL`
+- `INITIAL_ADMIN_PASSWORD`
+- opcionalmente `INITIAL_ADMIN_NAME`
+- opcionalmente `INITIAL_ADMIN_ORGANIZATION_KEY`
 
 ## 7. Integración con frontend
 

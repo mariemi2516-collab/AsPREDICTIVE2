@@ -160,7 +160,6 @@ export const api = {
     return request<{ access_token: string; user: Usuario }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, nombre, rol }),
-      auth: false,
     });
   },
   async getMe() {

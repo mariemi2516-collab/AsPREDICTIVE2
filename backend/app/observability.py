@@ -47,14 +47,17 @@ def write_audit_log(
     action: str,
     resource_type: str,
     resource_id: str | None = None,
+    organization_key: str | None = None,
     details: dict[str, Any] | None = None,
 ) -> None:
+    details_payload = details or {}
     entry = AuditLog(
         actor_user_id=actor_user_id,
+        organization_key=organization_key or str(details_payload.get("organization_key") or "default"),
         action=action,
         resource_type=resource_type,
         resource_id=resource_id,
-        details_json=json.dumps(details or {}, ensure_ascii=False),
+        details_json=json.dumps(details_payload, ensure_ascii=False),
     )
     db.add(entry)
 
