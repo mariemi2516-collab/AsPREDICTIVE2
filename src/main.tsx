@@ -11,8 +11,22 @@ createRoot(document.getElementById('root')!).render(
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((error) => {
-      console.error('Error registering service worker:', error);
-    });
+    navigator.serviceWorker
+      .getRegistrations()
+      .then(async (registrations) => {
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+
+        if ('caches' in window) {
+          const cacheKeys = await caches.keys();
+          await Promise.all(
+            cacheKeys
+              .filter((key) => key.startsWith('aspredictive-shell-'))
+              .map((key) => caches.delete(key)),
+          );
+        }
+      })
+      .catch((error) => {
+        console.error('Error clearing legacy service workers:', error);
+      });
   });
 }
