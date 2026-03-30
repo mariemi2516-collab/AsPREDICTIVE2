@@ -66,6 +66,11 @@ function normalizeModelToken(value: string) {
     .replace(/^categorical:\s*condicion luz/i, 'La condicion de luz influyo en la evaluacion');
 }
 
+function isLowSignalDescriptionToken(value: string) {
+  const token = value.trim().toLowerCase();
+  return ['no', 'si', 'sí', 'sin', 'con', 'y', 'o', 'de', 'del', 'la', 'el', 'en'].includes(token) || token.length <= 2;
+}
+
 export function humanizePredictiveFactor(value: string) {
   const cleaned = value.replace(/\(\+[0-9.]+\)/g, '').trim();
   if (!cleaned) {
@@ -77,15 +82,46 @@ export function humanizePredictiveFactor(value: string) {
     .replace(/\s+/g, ' ')
     .trim();
 
+  if (/^el incidente cuenta con coordenadas registradas$/i.test(normalized)) {
+    return 'La ubicacion georreferenciada del evento aporto precision al analisis';
+  }
+
+  if (/^la velocidad del viento influyo en la evaluacion$/i.test(normalized)) {
+    return 'La intensidad del viento reportada aumento la atencion del caso';
+  }
+
+  if (/^la visibilidad reportada influyo en la evaluacion$/i.test(normalized)) {
+    return 'La visibilidad informada fue relevante para estimar el nivel de riesgo';
+  }
+
+  if (/^la operacion se realizo en horario nocturno$/i.test(normalized)) {
+    return 'El evento ocurrio en una franja horaria de mayor exigencia operacional';
+  }
+
   if (/^descripcion del evento:\s*no$/i.test(normalized)) {
-    return 'La descripcion del evento es demasiado breve o poco especifica';
+    return 'La descripcion del evento aporta informacion limitada y requiere validacion humana';
   }
 
   if (/^descripcion del evento:/i.test(normalized)) {
     const fragment = normalized.replace(/^descripcion del evento:\s*/i, '').trim();
+    if (!fragment || isLowSignalDescriptionToken(fragment)) {
+      return 'La narrativa del incidente aporto contexto general al analisis';
+    }
     return fragment
       ? `En la descripcion aparecen terminos relevantes como "${fragment}"`
       : 'La descripcion del evento aporto contexto al analisis';
+  }
+
+  if (/^la fase de vuelo influyo en la evaluacion$/i.test(normalized)) {
+    return 'La fase de vuelo del evento incidio en la priorizacion del riesgo';
+  }
+
+  if (/^la condicion meteorologica influyo en la evaluacion$/i.test(normalized)) {
+    return 'Las condiciones meteorologicas declaradas influyeron en la evaluacion';
+  }
+
+  if (/^la condicion de luz influyo en la evaluacion$/i.test(normalized)) {
+    return 'La condicion de iluminacion del evento fue considerada en el analisis';
   }
 
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
