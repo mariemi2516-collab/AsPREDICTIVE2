@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LockKeyhole, Plane } from 'lucide-react';
+import { Plane } from 'lucide-react';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -85,19 +85,6 @@ export default function Login() {
               {loading ? 'Iniciando sesion...' : 'Iniciar sesion'}
             </button>
           </form>
-
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Acceso institucional
-            </p>
-            <div className="mt-3 space-y-2 text-sm text-slate-700">
-              <p className="flex items-center gap-2">
-                <LockKeyhole className="h-4 w-4 text-sky-700" />
-                Ingresa con credenciales provistas por la administracion del sistema.
-              </p>
-            </div>
-          </div>
-
           <p className="mt-6 text-center text-sm text-gray-600">
             Sistema de gestion de seguridad aeronautica
           </p>
